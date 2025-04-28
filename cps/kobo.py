@@ -223,8 +223,8 @@ def HandleSyncRequest():
     log.debug("Kobo Sync: selected to sync: {}".format(len(books.all())))
     for book in books:
         formats = [data.format for data in book.Books.data]
-        # if 'KEPUB' not in formats and config.config_kepubifypath and 'EPUB' in formats:
-        #     helper.convert_book_format(book.Books.id, config.get_book_path(), 'EPUB', 'KEPUB', current_user.name)
+        if 'KEPUB' not in formats and config.config_kepubifypath and 'EPUB' in formats:
+            helper.convert_book_format(book.Books.id, config.get_book_path(), 'EPUB', 'KEPUB', current_user.name)
 
         kobo_reading_state = get_or_create_reading_state(book.Books.id)
         entitlement = {
