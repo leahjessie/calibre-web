@@ -188,8 +188,6 @@ def HandleSyncRequest():
         changed_entries = (changed_entries
                            .join(db.Data).outerjoin(ub.ArchivedBook, and_(db.Books.id == ub.ArchivedBook.book_id,
                                                                           ub.ArchivedBook.user_id == current_user.id))
-                           .filter(db.Books.id.notin_(calibre_db.session.query(ub.KoboSyncedBooks.book_id)
-                                                      .filter(ub.KoboSyncedBooks.user_id == current_user.id)))
                            .filter(or_(
                                 ub.BookShelf.date_added > sync_token.books_last_modified,
                                 db.Books.last_modified > sync_token.books_last_modified,
@@ -210,8 +208,7 @@ def HandleSyncRequest():
         changed_entries = (changed_entries
                            .join(db.Data).outerjoin(ub.ArchivedBook, and_(db.Books.id == ub.ArchivedBook.book_id,
                                                                           ub.ArchivedBook.user_id == current_user.id))
-                           .filter(db.Books.id.notin_(calibre_db.session.query(ub.KoboSyncedBooks.book_id)
-                                                      .filter(ub.KoboSyncedBooks.user_id == current_user.id)))
+                           .filter(db.Books.last_modified > sync_token.books_last_modified)
                            .filter(calibre_db.common_filters(allow_show_archived=True))
                            .filter(db.Data.format.in_(KOBO_FORMATS))
                            .order_by(db.Books.last_modified)
@@ -267,7 +264,7 @@ def HandleSyncRequest():
     # no. of books returned
     book_count = changed_entries.count()
     # last entry:
-    cont_sync = bool(book_count)
+    cont_sync = bool(book_count > SYNC_ITEM_LIMIT)
     log.debug("Kobo Sync: remaining books to sync: {}".format(book_count))
     # generate reading state data
     changed_reading_states = ub.session.query(ub.KoboReadingState)
