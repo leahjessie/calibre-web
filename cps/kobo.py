@@ -93,16 +93,63 @@ def make_request_to_kobo_store(sync_token=None):
     if sync_token:
         sync_token.set_kobo_store_header(outgoing_headers)
 
+    store_url = get_store_url_for_current_request()
+    request_body = request.get_data() # Get body data once
+
+    # <<< Start Enhanced Logging Block >>>
+    log.debug(f'>>> Proxying Request to Kobo Store >>>')
+    log.debug(f'  Method: {request.method}')
+    log.debug(f'  URL: {store_url}')
+    log.debug(f'  Headers: {dict(outgoing_headers)}')
+    try:
+        # Decode body for logging if possible, truncate
+        body_text = request_body.decode('utf-8', errors='replace')
+        log.debug(f'  Body: {body_text[:10000]}{"..." if len(body_text) > 10000 else ""}')
+    except Exception as e:
+        log.warning(f'  Could not decode/log outgoing proxy body: {e}')
+        log.debug(f'  Raw Body (first 1000 bytes): {request_body[:1000]}')
+    # <<< End Enhanced Logging Block >>>
+
     store_response = requests.request(
         method=request.method,
-        url=get_store_url_for_current_request(),
+        url=store_url, # Use the variable
         headers=outgoing_headers,
-        data=request.get_data(),
+        data=request_body, # Use the variable
         allow_redirects=False,
         timeout=(2, 10)
     )
-    log.debug("Content: " + str(store_response.content))
-    log.debug("StatusCode: " + str(store_response.status_code))
+
+    # Enhance existing logging for the response received from Kobo Store
+    log.debug(f'<<< Received Response from Kobo Store <<<')
+    log.debug(f'  Status Code: {store_response.status_code}')
+    log.debug(f'  Headers: {dict(store_response.headers)}')
+    try:
+        # Attempt to parse and log JSON nicely
+        content_json = store_response.json()
+        # Use json.dumps for pretty printing
+        log.debug(f'  JSON Content: {json.dumps(content_json, indent=2)}')
+    except json.JSONDecodeError:
+        # Log raw content if not JSON, decode if possible, truncate
+        try:
+            content_text = store_response.content.decode('utf-8', errors='replace')
+            log.debug(f'  Content: {content_text[:1000]}{"..." if len(content_text) > 1000 else ""}')
+        except Exception as e:
+            log.warning(f'  Could not decode/log proxied response content: {e}')
+            log.debug(f'  Raw Content (first 1000 bytes): {store_response.content[:1000]}')
+    # Log details of the request that *generated* this response
+    log.debug(f'  --- For Request ---')
+    log.debug(f'  Method: {store_response.request.method}')
+    log.debug(f'  URL: {store_response.request.url}')
+    log.debug(f'  Headers: {dict(store_response.request.headers)}')
+    try:
+        req_body_text = store_response.request.body.decode('utf-8', errors='replace') if store_response.request.body else 'None'
+        log.debug(f'  Body: {req_body_text[:1000]}{"..." if len(req_body_text) > 1000 else ""}')
+    except Exception as e:
+        log.warning(f'  Could not decode/log original outgoing request body: {e}')
+
+
+    # log.debug("Content: " + str(store_response.content)) # You might remove/comment this out now
+    # log.debug("StatusCode: " + str(store_response.status_code)) # You might remove/comment this out now
     return store_response
 
 
@@ -143,6 +190,28 @@ def convert_to_kobo_timestamp_string(timestamp):
 @requires_kobo_auth
 # @download_required
 def HandleSyncRequest():
+    # <<< Start Enhanced Logging Block >>>
+    log.debug(f'<<< Kobo Request Received <<<')
+    log.debug(f'  Method: {request.method}')
+    log.debug(f'  URL: {request.url}')
+    log.debug(f'  Headers: {dict(request.headers)}') # dict() makes it print nicer
+    try:
+        # Attempt to log body - be careful with large data
+        if request.content_length and request.content_length < 2000: # Avoid logging huge bodies
+            if request.is_json:
+                log.debug(f'  JSON Body: {request.get_json()}') # Parses JSON
+            else:
+                # Log raw body, decode if possible, truncate
+                raw_body = request.get_data(as_text=True)
+                log.debug(f'  Raw Body: {raw_body[:2000]}{"..." if len(raw_body) > 2000 else ""}')
+        elif request.content_length:
+             log.debug(f'  Body: Skipped logging large body ({request.content_length} bytes)')
+        else:
+            log.debug('  Body: No body content')
+    except Exception as e:
+        log.warning(f'  Could not log request body: {e}')
+    # <<< End Enhanced Logging Block >>>
+
     if not current_user.role_download():
         log.info("Users need download permissions for syncing library to Kobo reader")
         return abort(403)
@@ -331,10 +400,29 @@ def generate_sync_response(sync_token, sync_results, set_cont=False):
         extra_headers["x-kobo-sync"] = "continue"
     sync_token.to_headers(extra_headers)
 
-    # log.debug("Kobo Sync Content: {}".format(sync_results))
-    # jsonify decodes the Unicode string different to what kobo expects
-    response = make_response(json.dumps(sync_results), extra_headers)
-    response.headers["Content-Type"] = "application/json; charset=utf-8"
+    # Convert results to JSON string *before* creating response
+    try:
+        response_body_json = json.dumps(sync_results)
+    except TypeError as e:
+        log.error(f"Failed to serialize sync_results to JSON: {e}")
+        response_body_json = "[]" # Default to empty list on error
+
+    # <<< Start Enhanced Logging Block >>>
+    log.debug(f'>>> Preparing Response to Kobo Device >>>')
+    log.debug(f'  Status Code: 200') # Assuming 200 OK unless error
+    log.debug(f'  Headers: {extra_headers}')
+    log.debug(f'  Body (first 1000 chars): {response_body_json[:1000]}{"..." if len(response_body_json)>1000 else ""}')
+    # <<< End Enhanced Logging Block >>>
+
+    response = make_response(response_body_json, extra_headers) # Pass status code if needed, defaults to 200
+    response.headers['Content-Type'] = 'application/json; charset=utf-8'
+
+    # Optional: Log the final response object details (can be redundant)
+    # log.debug(f'--- Final Response Object ---')
+    # log.debug(f'  Status: {response.status}')
+    # log.debug(f'  Headers: {dict(response.headers)}')
+    # log.debug(f'  Data (first 1000): {response.get_data(as_text=True)[:1000]}')
+
     return response
 
 
@@ -764,62 +852,116 @@ def create_kobo_tag(shelf):
 @kobo.route("/v1/library/<book_uuid>/state", methods=["GET", "PUT"])
 @requires_kobo_auth
 def HandleStateRequest(book_uuid):
+    log.debug(f'HandleStateRequest called for book_uuid: {book_uuid}')
     book = calibre_db.get_book_by_uuid(book_uuid)
     if not book or not book.data:
         log.info("Book %s not found in database", book_uuid)
         return redirect_or_proxy_request()
 
+# --- Book IS found in DB ---
+    log.debug(f'Book found in DB (ID: {book.id}). Handling {request.method} request.')
+    # Log incoming headers for this specific request
+    log.debug(f'  Incoming Headers: {dict(request.headers)}')
+
     kobo_reading_state = get_or_create_reading_state(book.id)
 
     if request.method == "GET":
-        return jsonify([get_kobo_reading_state_response(book, kobo_reading_state)])
+        # --- Handle GET ---
+        log.debug('Processing GET request for reading state.')
+        response_data = get_kobo_reading_state_response(book, kobo_reading_state)
+        # Log the response data being sent back
+        log.debug(f'>>> Sending Response (GET) >>>')
+        try:
+            log.debug(f'  Status Code: 200')
+            log.debug(f'  Body:\n{json.dumps([response_data], indent=2)}') # Note: Kobo expects a list containing one object
+        except Exception as e:
+            log.error(f'Error formatting GET response for logging: {e}')
+            log.debug(f'  Raw Response Data: {[response_data]}')
+
+        return jsonify([response_data]) # Original Kobo response is a list containing the state object
     else:
+        # --- Handle PUT ---
+        log.debug('Processing PUT request to update reading state.')
         update_results_response = {"EntitlementId": book_uuid}
 
         try:
-            request_data = request.json
+            # Log the incoming PUT request body
+            request_data = request.json # Get JSON data
+            log.debug(f'<<< Received Request Body (PUT) <<<')
+            try:
+                log.debug(f'  Body:\n{json.dumps(request_data, indent=2)}')
+            except Exception as e:
+                 log.error(f'Error formatting PUT request body for logging: {e}')
+                 log.debug(f'  Raw Request Data: {request_data}')
+
+            # --- Start processing the received data ---
+            # (Keep existing logic for parsing request_data)
             request_reading_state = request_data["ReadingStates"][0]
 
-            request_bookmark = request_reading_state["CurrentBookmark"]
+            request_bookmark = request_reading_state.get("CurrentBookmark") # Use .get for safety
             if request_bookmark:
+                log.debug('  Updating CurrentBookmark data...')
                 current_bookmark = kobo_reading_state.current_bookmark
-                current_bookmark.progress_percent = request_bookmark["ProgressPercent"]
-                current_bookmark.content_source_progress_percent = request_bookmark["ContentSourceProgressPercent"]
-                location = request_bookmark["Location"]
+                current_bookmark.progress_percent = request_bookmark.get("ProgressPercent")
+                current_bookmark.content_source_progress_percent = request_bookmark.get("ContentSourceProgressPercent")
+                location = request_bookmark.get("Location")
                 if location:
-                    current_bookmark.location_value = location["Value"]
-                    current_bookmark.location_type = location["Type"]
-                    current_bookmark.location_source = location["Source"]
+                    current_bookmark.location_value = location.get("Value")
+                    current_bookmark.location_type = location.get("Type")
+                    current_bookmark.location_source = location.get("Source")
                 update_results_response["CurrentBookmarkResult"] = {"Result": "Success"}
 
-            request_statistics = request_reading_state["Statistics"]
+            request_statistics = request_reading_state.get("Statistics")
             if request_statistics:
+                log.debug('  Updating Statistics data...')
                 statistics = kobo_reading_state.statistics
-                statistics.spent_reading_minutes = int(request_statistics["SpentReadingMinutes"])
-                statistics.remaining_time_minutes = int(request_statistics["RemainingTimeMinutes"])
+                # Ensure conversion handles potential None values gracefully if needed, though Kobo likely sends valid ints
+                statistics.spent_reading_minutes = int(request_statistics.get("SpentReadingMinutes", 0))
+                statistics.remaining_time_minutes = int(request_statistics.get("RemainingTimeMinutes", 0))
                 update_results_response["StatisticsResult"] = {"Result": "Success"}
 
-            request_status_info = request_reading_state["StatusInfo"]
+            request_status_info = request_reading_state.get("StatusInfo")
             if request_status_info:
+                log.debug('  Updating StatusInfo data...')
                 book_read = kobo_reading_state.book_read_link
-                new_book_read_status = get_ub_read_status(request_status_info["Status"])
+                new_book_read_status = get_ub_read_status(request_status_info.get("Status"))
                 if new_book_read_status == ub.ReadBook.STATUS_IN_PROGRESS \
                         and new_book_read_status != book_read.read_status:
                     book_read.times_started_reading += 1
                     book_read.last_time_started_reading = datetime.now(timezone.utc)
                 book_read.read_status = new_book_read_status
                 update_results_response["StatusInfoResult"] = {"Result": "Success"}
-        except (KeyError, TypeError, ValueError, StatementError):
-            log.debug("Received malformed v1/library/<book_uuid>/state request.")
-            ub.session.rollback()
-            abort(400, description="Malformed request data is missing 'ReadingStates' key")
+            # --- End processing the received data ---
 
+        except (KeyError, TypeError, ValueError, StatementError, IndexError) as e: # Added IndexError
+            log.exception("Error processing PUT request body for state update.") # Log full exception
+            ub.session.rollback()
+            # Log the specific error before aborting
+            log.error(f"Aborting state update due to error: {e}")
+            abort(400, description=f"Malformed/Incomplete request data: {e}") # Include error in description
+
+        # Merge and commit changes if successful
+        log.debug('Merging reading state changes to database...')
         ub.session.merge(kobo_reading_state)
         ub.session_commit()
-        return jsonify({
+        log.debug('Database commit successful.')
+
+        # Construct the final success response payload
+        final_response_data = {
             "RequestResult": "Success",
             "UpdateResults": [update_results_response],
-        })
+        }
+
+        # Log the success response being sent back
+        log.debug(f'>>> Sending Response (PUT) >>>')
+        try:
+             log.debug(f'  Status Code: 200')
+             log.debug(f'  Body:\n{json.dumps(final_response_data, indent=2)}')
+        except Exception as e:
+            log.error(f'Error formatting PUT response for logging: {e}')
+            log.debug(f'  Raw Response Data: {final_response_data}')
+
+        return jsonify(final_response_data)
 
 
 def get_read_status_for_kobo(ub_book_read):
