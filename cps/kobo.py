@@ -189,7 +189,7 @@ def HandleSyncRequest():
                            .join(db.Data).outerjoin(ub.ArchivedBook, and_(db.Books.id == ub.ArchivedBook.book_id,
                                                                           ub.ArchivedBook.user_id == current_user.id))
                            .filter(or_(
-                                ub.BookShelf.date_added > sync_token.books_last_modified,
+                                ub.BookShelf.date_added > sync_token.tags_last_modified,
                                 db.Books.last_modified > sync_token.books_last_modified,
                            ))
                            .filter(db.Data.format.in_(KOBO_FORMATS))
