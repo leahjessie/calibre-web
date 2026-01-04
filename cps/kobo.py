@@ -1107,6 +1107,7 @@ def HandleBookDeletionRequest(book_uuid):
 # TODO: Implement the following routes
 @csrf.exempt
 @kobo.route("/v1/library/<dummy>", methods=["DELETE", "GET", "POST"])
+@kobo.route("/v1/library/<dummy>/preview", methods=["POST"])
 def HandleUnimplementedRequest(dummy=None):
     log.debug("Unimplemented Library Request received: %s (request is forwarded to kobo if configured)",
               request.base_url)
@@ -1159,6 +1160,8 @@ def handle_getests():
 @kobo.route("/v1/products/dailydeal", methods=["GET", "POST"])
 @kobo.route("/v1/products/deals", methods=["GET", "POST"])
 @kobo.route("/v1/products", methods=["GET", "POST"])
+@kobo.route("/v1/products/<path:dummy>", methods=["GET", "POST"])
+@kobo.route("/v1/products/<path:dummy>/", methods=["GET", "POST"])
 @kobo.route("/v1/affiliate", methods=["GET", "POST"])
 @kobo.route("/v1/deals", methods=["GET", "POST"])
 def HandleProductsRequest(dummy=None):
@@ -1346,6 +1349,9 @@ def NATIVE_KOBO_RESOURCES():
         "image_host": "//cdn.kobo.com/book-images/",
         "image_url_quality_template": "https://cdn.kobo.com/book-images/{ImageId}/{Width}/{Height}/{Quality}/{IsGreyscale}/image.jpg",
         "image_url_template": "https://cdn.kobo.com/book-images/{ImageId}/{Width}/{Height}/false/image.jpg",
+        "instapaper_enabled": "True",
+        "instapaper_env_url": "https://www.instapaper.com/api/kobo",
+        "instapaper_link_account_start": "https://authorize.kobo.com/{region}/{language}/linkinstapaper",
         "kobo_audiobooks_credit_redemption": "False",
         "kobo_audiobooks_enabled": "True",
         "kobo_audiobooks_orange_deal_enabled": "False",

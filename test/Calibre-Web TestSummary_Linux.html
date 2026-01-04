@@ -37,20 +37,20 @@
       <div class="row">
         <div class="col-xs-6 col-md-6 col-sm-offset-3" style="margin-top:50px;">
             
-            <p class='text-justify attribute'><strong>Start Time: </strong>2025-03-25 20:17:40</p>
+            <p class='text-justify attribute'><strong>Start Time: </strong>2025-12-20 19:34:51</p>
             
         </div>
       </div>
       <div class="row">
         <div class="col-xs-6 col-md-6 col-sm-offset-3">
             
-            <p class='text-justify attribute'><strong>Stop Time: </strong>2025-03-26 03:29:00</p>
+            <p class='text-justify attribute'><strong>Stop Time: </strong>2025-12-21 03:04:35</p>
             
         </div>
       </div>
       <div class="row">
         <div class="col-xs-6 col-md-6 col-sm-offset-3">
-           <p class='text-justify attribute'><strong>Duration: </strong>6h 7 min</p>
+           <p class='text-justify attribute'><strong>Duration: </strong>6h 12 min</p>
         </div>
       </div>
       </div>
@@ -102,11 +102,11 @@
     </tr>
 
 
-    <tr id="su" class="passClass">
+    <tr id="su" class="failClass">
         <td>TestAnonymous</td>
         <td class="text-center">13</td>
-        <td class="text-center">13</td>
-        <td class="text-center">0</td>
+        <td class="text-center">11</td>
+        <td class="text-center">2</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
@@ -143,11 +143,33 @@
     
     
     
-        <tr id='pt1.4' class='hiddenRow bg-success'>
+        <tr id="ft1.4" class="none bg-danger">
             <td>
                 <div class='testcase'>TestAnonymous - test_guest_change_visibility_format</div>
             </td>
-            <td colspan='6' align='center'>PASS</td>
+            <td colspan='6'>
+                <div class="text-center">
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_ft1.4')">FAIL</a>
+                </div>
+                <!--css div popup start-->
+                <div id="div_ft1.4" class="popup_window test_output" style="display:block;">
+                    <div class='close_button pull-right'>
+                        <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
+                                onclick="document.getElementById('div_ft1.4').style.display='none'"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="text-left pull-left">
+                        <pre class="text-left">Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_anonymous.py&#34;, line 349, in test_guest_change_visibility_format
+    self.assertEqual(books[0][&#39;id&#39;], &#39;CBR&#39;)
+AssertionError: &#39;1&#39; != &#39;CBR&#39;
+- 1
++ CBR</pre>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <!--css div popup end-->
+            </td>
         </tr>
     
     
@@ -161,11 +183,33 @@
     
     
     
-        <tr id='pt1.6' class='hiddenRow bg-success'>
+        <tr id="ft1.6" class="none bg-danger">
             <td>
                 <div class='testcase'>TestAnonymous - test_guest_change_visibility_language</div>
             </td>
-            <td colspan='6' align='center'>PASS</td>
+            <td colspan='6'>
+                <div class="text-center">
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_ft1.6')">FAIL</a>
+                </div>
+                <!--css div popup start-->
+                <div id="div_ft1.6" class="popup_window test_output" style="display:block;">
+                    <div class='close_button pull-right'>
+                        <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
+                                onclick="document.getElementById('div_ft1.6').style.display='none'"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="text-left pull-left">
+                        <pre class="text-left">Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_anonymous.py&#34;, line 262, in test_guest_change_visibility_language
+    self.assertEqual(books[0][&#39;id&#39;], &#39;eng&#39;)
+AssertionError: &#39;1&#39; != &#39;eng&#39;
+- 1
++ eng</pre>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <!--css div popup end-->
+            </td>
         </tr>
     
     
@@ -594,12 +638,12 @@
     
 
 
-    <tr id="su" class="passClass">
+    <tr id="su" class="errorClass">
         <td>TestCliGdrivedb</td>
         <td class="text-center">4</td>
-        <td class="text-center">4</td>
-        <td class="text-center">0</td>
-        <td class="text-center">0</td>
+        <td class="text-center">2</td>
+        <td class="text-center">1</td>
+        <td class="text-center">1</td>
         <td class="text-center">0</td>
         <td class="text-center">
             <a onclick="showClassDetail('c5', 4)">Detail</a>
@@ -626,20 +670,132 @@
     
     
     
-        <tr id='pt5.3' class='hiddenRow bg-success'>
+        <tr id="et5.3" class="none bg-info">
             <td>
                 <div class='testcase'>TestCliGdrivedb - test_gdrive_db_nonwrite</div>
             </td>
-            <td colspan='6' align='center'>PASS</td>
+            <td colspan='6'>
+                <div class="text-center">
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_et5.3')">ERROR</a>
+                </div>
+                <!--css div popup start-->
+                <div id="div_et5.3" class="popup_window test_output" style="display:block;">
+                    <div class='close_button pull-right'>
+                        <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
+                                onclick="document.getElementById('div_et5.3').style.display='none'"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="text-left pull-left">
+                        <pre class="text-left">Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/connectionpool.py&#34;, line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/connection.py&#34;, line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File &#34;/usr/lib/python3.12/http/client.py&#34;, line 1428, in getresponse
+    response.begin()
+  File &#34;/usr/lib/python3.12/http/client.py&#34;, line 331, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File &#34;/usr/lib/python3.12/http/client.py&#34;, line 292, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), &#34;iso-8859-1&#34;)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &#34;/usr/lib/python3.12/socket.py&#34;, line 707, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_cli_gdrive.py&#34;, line 170, in test_gdrive_db_nonwrite
+    self.driver.get(&#34;http://127.0.0.1:&#34; + PORTS[0])
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py&#34;, line 479, in get
+    self.execute(Command.GET, {&#34;url&#34;: url})
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/selenium/webdriver/remote/webdriver.py&#34;, line 451, in execute
+    response = cast(RemoteConnection, self.command_executor).execute(driver_command, params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/selenium/webdriver/remote/remote_connection.py&#34;, line 404, in execute
+    return self._request(command_info[0], url, body=data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/selenium/webdriver/remote/remote_connection.py&#34;, line 428, in _request
+    response = self._conn.request(method, url, body=body, headers=headers, timeout=self._client_config.timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/_request_methods.py&#34;, line 143, in request
+    return self.request_encode_body(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/_request_methods.py&#34;, line 278, in request_encode_body
+    return self.urlopen(method, url, **extra_kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/poolmanager.py&#34;, line 443, in urlopen
+    response = conn.urlopen(method, u.request_uri, **kw)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/connectionpool.py&#34;, line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/util/retry.py&#34;, line 474, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/util/util.py&#34;, line 39, in reraise
+    raise value
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/connectionpool.py&#34;, line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/connectionpool.py&#34;, line 536, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/connectionpool.py&#34;, line 367, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPConnectionPool(host=&#39;localhost&#39;, port=57687): Read timed out. (read timeout=120)</pre>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <!--css div popup end-->
+            </td>
         </tr>
     
     
     
-        <tr id='pt5.4' class='hiddenRow bg-success'>
+        <tr id="ft5.4" class="none bg-danger">
             <td>
                 <div class='testcase'>TestCliGdrivedb - test_no_database</div>
             </td>
-            <td colspan='6' align='center'>PASS</td>
+            <td colspan='6'>
+                <div class="text-center">
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_ft5.4')">FAIL</a>
+                </div>
+                <!--css div popup start-->
+                <div id="div_ft5.4" class="popup_window test_output" style="display:block;">
+                    <div class='close_button pull-right'>
+                        <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
+                                onclick="document.getElementById('div_ft5.4').style.display='none'"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="text-left pull-left">
+                        <pre class="text-left">Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/venv/lib/python3.12/site-packages/urllib3/connectionpool.py&#34;, line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_cli_gdrive.py&#34;, line 225, in test_no_database
+    self.driver.get(&#34;http://127.0.0.1:&#34; + PORTS[0])
+urllib3.exceptions.ReadTimeoutError: HTTPConnectionPool(host=&#39;localhost&#39;, port=57687): Read timed out. (read timeout=120)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_cli_gdrive.py&#34;, line 237, in test_no_database
+    self.assertFalse(True, &#34;Inital config failed with normal database&#34;)
+AssertionError: True is not false : Inital config failed with normal database</pre>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <!--css div popup end-->
+            </td>
         </tr>
     
     
@@ -1846,13 +2002,13 @@
 
     <tr id="su" class="passClass">
         <td>TestEditBooksList</td>
-        <td class="text-center">19</td>
-        <td class="text-center">19</td>
+        <td class="text-center">20</td>
+        <td class="text-center">20</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c17', 19)">Detail</a>
+            <a onclick="showClassDetail('c17', 20)">Detail</a>
         </td>
     </tr>
 
@@ -1860,7 +2016,7 @@
     
         <tr id='pt17.1' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_booklist_xss</div>
+                <div class='testcase'>TestEditBooksList - test_booklist_archive_read</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1869,7 +2025,7 @@
     
         <tr id='pt17.2' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_author</div>
+                <div class='testcase'>TestEditBooksList - test_booklist_xss</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1878,7 +2034,7 @@
     
         <tr id='pt17.3' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_categories</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_author</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1887,7 +2043,7 @@
     
         <tr id='pt17.4' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_comment</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_categories</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1896,7 +2052,7 @@
     
         <tr id='pt17.5' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_category</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_comment</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1905,7 +2061,7 @@
     
         <tr id='pt17.6' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_comment</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_category</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1914,7 +2070,7 @@
     
         <tr id='pt17.7' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_enum</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_comment</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1923,7 +2079,7 @@
     
         <tr id='pt17.8' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_float</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_enum</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1932,7 +2088,7 @@
     
         <tr id='pt17.9' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_int</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_float</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1941,7 +2097,7 @@
     
         <tr id='pt17.10' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_ratings</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_int</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1950,7 +2106,7 @@
     
         <tr id='pt17.11' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_text</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_ratings</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1959,7 +2115,7 @@
     
         <tr id='pt17.12' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_languages</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_cust_text</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1968,7 +2124,7 @@
     
         <tr id='pt17.13' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_publisher</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_languages</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1977,7 +2133,7 @@
     
         <tr id='pt17.14' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_series</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_publisher</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1986,7 +2142,7 @@
     
         <tr id='pt17.15' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_seriesindex</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_series</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -1995,7 +2151,7 @@
     
         <tr id='pt17.16' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_bookslist_edit_title</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_seriesindex</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -2004,7 +2160,7 @@
     
         <tr id='pt17.17' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_list_visibility</div>
+                <div class='testcase'>TestEditBooksList - test_bookslist_edit_title</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -2013,7 +2169,7 @@
     
         <tr id='pt17.18' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksList - test_restricted_rights</div>
+                <div class='testcase'>TestEditBooksList - test_list_visibility</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -2021,6 +2177,15 @@
     
     
         <tr id='pt17.19' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestEditBooksList - test_restricted_rights</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt17.20' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestEditBooksList - test_search_books_list</div>
             </td>
@@ -2061,8 +2226,9 @@
                     </div>
                     <div class="text-left pull-left">
                         <pre class="text-left">Traceback (most recent call last):
-  File &#34;/home/ozzie/Development/calibre-web-test/test/test_edit_books_metadata.py&#34;, line 99, in test_load_metadata
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_edit_books_metadata.py&#34;, line 87, in test_load_metadata
     if results[cont][&#39;source&#39;] == &#39;https://comicvine.gamespot.com/&#39;:
+       ~~~~~~~^^^^^^
 IndexError: list index out of range</pre>
                     </div>
                     <div class="clearfix"></div>
@@ -2076,13 +2242,13 @@ IndexError: list index out of range</pre>
 
     <tr id="su" class="passClass">
         <td>TestEditBooksOnGdrive</td>
-        <td class="text-center">18</td>
-        <td class="text-center">18</td>
+        <td class="text-center">19</td>
+        <td class="text-center">19</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c19', 18)">Detail</a>
+            <a onclick="showClassDetail('c19', 19)">Detail</a>
         </td>
     </tr>
 
@@ -2234,7 +2400,7 @@ IndexError: list index out of range</pre>
     
         <tr id='pt19.17' class='hiddenRow bg-success'>
             <td>
-                <div class='testcase'>TestEditBooksOnGdrive - test_upload_book_lit</div>
+                <div class='testcase'>TestEditBooksOnGdrive - test_upload_book_epub</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -2242,6 +2408,15 @@ IndexError: list index out of range</pre>
     
     
         <tr id='pt19.18' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestEditBooksOnGdrive - test_upload_book_lit</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt19.19' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestEditBooksOnGdrive - test_watch_metadata</div>
             </td>
@@ -2251,11 +2426,11 @@ IndexError: list index out of range</pre>
     
 
 
-    <tr id="su" class="passClass">
+    <tr id="su" class="failClass">
         <td>TestLoadMetadataScholar</td>
         <td class="text-center">1</td>
-        <td class="text-center">1</td>
         <td class="text-center">0</td>
+        <td class="text-center">1</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
@@ -2265,11 +2440,31 @@ IndexError: list index out of range</pre>
 
     
     
-        <tr id='pt20.1' class='hiddenRow bg-success'>
+        <tr id="ft20.1" class="none bg-danger">
             <td>
                 <div class='testcase'>TestLoadMetadataScholar - test_load_metadata</div>
             </td>
-            <td colspan='6' align='center'>PASS</td>
+            <td colspan='6'>
+                <div class="text-center">
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_ft20.1')">FAIL</a>
+                </div>
+                <!--css div popup start-->
+                <div id="div_ft20.1" class="popup_window test_output" style="display:block;">
+                    <div class='close_button pull-right'>
+                        <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
+                                onclick="document.getElementById('div_ft20.1').style.display='none'"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="text-left pull-left">
+                        <pre class="text-left">Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_edit_metadata_scholar.py&#34;, line 74, in test_load_metadata
+    self.assertEqual(30, len(results))
+AssertionError: 30 != 20</pre>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <!--css div popup end-->
+            </td>
         </tr>
     
     
@@ -2572,12 +2767,12 @@ IndexError: list index out of range</pre>
     
 
 
-    <tr id="su" class="skipClass">
+    <tr id="su" class="errorClass">
         <td>TestFilePicker</td>
         <td class="text-center">3</td>
-        <td class="text-center">2</td>
+        <td class="text-center">1</td>
         <td class="text-center">0</td>
-        <td class="text-center">0</td>
+        <td class="text-center">1</td>
         <td class="text-center">1</td>
         <td class="text-center">
             <a onclick="showClassDetail('c27', 3)">Detail</a>
@@ -2621,11 +2816,32 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt27.3' class='hiddenRow bg-success'>
+        <tr id="et27.3" class="none bg-info">
             <td>
                 <div class='testcase'>TestFilePicker - test_two_filepickers</div>
             </td>
-            <td colspan='6' align='center'>PASS</td>
+            <td colspan='6'>
+                <div class="text-center">
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_et27.3')">ERROR</a>
+                </div>
+                <!--css div popup start-->
+                <div id="div_et27.3" class="popup_window test_output" style="display:block;">
+                    <div class='close_button pull-right'>
+                        <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
+                                onclick="document.getElementById('div_et27.3').style.display='none'"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="text-left pull-left">
+                        <pre class="text-left">Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_filepicker.py&#34;, line 88, in test_two_filepickers
+    accordions[0].click()
+    ~~~~~~~~~~^^^
+IndexError: list index out of range</pre>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <!--css div popup end-->
+            </td>
         </tr>
     
     
@@ -3023,13 +3239,13 @@ IndexError: list index out of range</pre>
 
     <tr id="su" class="passClass">
         <td>TestSecurity</td>
-        <td class="text-center">5</td>
-        <td class="text-center">5</td>
+        <td class="text-center">6</td>
+        <td class="text-center">6</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c33', 5)">Detail</a>
+            <a onclick="showClassDetail('c33', 6)">Detail</a>
         </td>
     </tr>
 
@@ -3074,6 +3290,15 @@ IndexError: list index out of range</pre>
         <tr id='pt33.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSecurity - test_register_limit</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt33.6' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestSecurity - test_x_forwarded_host</div>
             </td>
             <td colspan='6' align='center'>PASS</td>
         </tr>
@@ -3540,6 +3765,120 @@ IndexError: list index out of range</pre>
 
 
     <tr id="su" class="passClass">
+        <td>TestMassEditBooksList</td>
+        <td class="text-center">11</td>
+        <td class="text-center">11</td>
+        <td class="text-center">0</td>
+        <td class="text-center">0</td>
+        <td class="text-center">0</td>
+        <td class="text-center">
+            <a onclick="showClassDetail('c37', 11)">Detail</a>
+        </td>
+    </tr>
+
+    
+    
+        <tr id='pt37.1' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_author_title_combi</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.2' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_invalid_author_title</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.3' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_mass_edit_archive</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.4' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_mass_edit_categories</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.5' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_mass_edit_languages</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.6' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_mass_edit_publisher</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.7' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_mass_edit_read</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.8' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_mass_edit_series</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.9' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_protected_author_title</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.10' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_wrong_parameter_multi</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt37.11' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestMassEditBooksList - test_wrong_parameter_single</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+
+
+    <tr id="su" class="passClass">
         <td>TestMergeBooksList</td>
         <td class="text-center">2</td>
         <td class="text-center">2</td>
@@ -3547,13 +3886,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c37', 2)">Detail</a>
+            <a onclick="showClassDetail('c38', 2)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt37.1' class='hiddenRow bg-success'>
+        <tr id='pt38.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestMergeBooksList - test_book_merge</div>
             </td>
@@ -3562,7 +3901,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt37.2' class='hiddenRow bg-success'>
+        <tr id='pt38.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestMergeBooksList - test_delete_book</div>
             </td>
@@ -3580,13 +3919,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c38', 2)">Detail</a>
+            <a onclick="showClassDetail('c39', 2)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt38.1' class='hiddenRow bg-success'>
+        <tr id='pt39.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOAuthLogin - test_oauth_about</div>
             </td>
@@ -3595,7 +3934,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt38.2' class='hiddenRow bg-success'>
+        <tr id='pt39.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOAuthLogin - test_visible_oauth</div>
             </td>
@@ -3613,13 +3952,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c39', 26)">Detail</a>
+            <a onclick="showClassDetail('c40', 26)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt39.1' class='hiddenRow bg-success'>
+        <tr id='pt40.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_access_right_guest</div>
             </td>
@@ -3628,7 +3967,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.2' class='hiddenRow bg-success'>
+        <tr id='pt40.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_access_right_user</div>
             </td>
@@ -3637,7 +3976,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.3' class='hiddenRow bg-success'>
+        <tr id='pt40.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds</div>
             </td>
@@ -3646,7 +3985,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.4' class='hiddenRow bg-success'>
+        <tr id='pt40.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_author</div>
             </td>
@@ -3655,7 +3994,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.5' class='hiddenRow bg-success'>
+        <tr id='pt40.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_books</div>
             </td>
@@ -3664,7 +4003,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.6' class='hiddenRow bg-success'>
+        <tr id='pt40.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_calibre_companion</div>
             </td>
@@ -3673,7 +4012,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.7' class='hiddenRow bg-success'>
+        <tr id='pt40.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_colon_password</div>
             </td>
@@ -3682,7 +4021,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.8' class='hiddenRow bg-success'>
+        <tr id='pt40.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_cover</div>
             </td>
@@ -3691,7 +4030,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.9' class='hiddenRow bg-success'>
+        <tr id='pt40.9' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_download_book</div>
             </td>
@@ -3700,7 +4039,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.10' class='hiddenRow bg-success'>
+        <tr id='pt40.10' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_formats</div>
             </td>
@@ -3709,7 +4048,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.11' class='hiddenRow bg-success'>
+        <tr id='pt40.11' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_guest_user</div>
             </td>
@@ -3718,7 +4057,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.12' class='hiddenRow bg-success'>
+        <tr id='pt40.12' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_hot</div>
             </td>
@@ -3727,7 +4066,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.13' class='hiddenRow bg-success'>
+        <tr id='pt40.13' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_language</div>
             </td>
@@ -3736,7 +4075,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.14' class='hiddenRow bg-success'>
+        <tr id='pt40.14' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_non_admin</div>
             </td>
@@ -3745,7 +4084,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.15' class='hiddenRow bg-success'>
+        <tr id='pt40.15' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_publisher</div>
             </td>
@@ -3754,7 +4093,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.16' class='hiddenRow bg-success'>
+        <tr id='pt40.16' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_random</div>
             </td>
@@ -3763,7 +4102,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.17' class='hiddenRow bg-success'>
+        <tr id='pt40.17' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_ratings</div>
             </td>
@@ -3772,7 +4111,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.18' class='hiddenRow bg-success'>
+        <tr id='pt40.18' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_read_unread</div>
             </td>
@@ -3781,7 +4120,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.19' class='hiddenRow bg-success'>
+        <tr id='pt40.19' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_search</div>
             </td>
@@ -3790,7 +4129,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.20' class='hiddenRow bg-success'>
+        <tr id='pt40.20' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_series</div>
             </td>
@@ -3799,7 +4138,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.21' class='hiddenRow bg-success'>
+        <tr id='pt40.21' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_shelf_access</div>
             </td>
@@ -3808,7 +4147,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.22' class='hiddenRow bg-success'>
+        <tr id='pt40.22' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_stats</div>
             </td>
@@ -3817,7 +4156,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.23' class='hiddenRow bg-success'>
+        <tr id='pt40.23' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_tags</div>
             </td>
@@ -3826,7 +4165,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.24' class='hiddenRow bg-success'>
+        <tr id='pt40.24' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_top_rated</div>
             </td>
@@ -3835,7 +4174,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.25' class='hiddenRow bg-success'>
+        <tr id='pt40.25' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_opds_unicode_user</div>
             </td>
@@ -3844,7 +4183,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt39.26' class='hiddenRow bg-success'>
+        <tr id='pt40.26' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestOPDSFeed - test_recently_added</div>
             </td>
@@ -3862,13 +4201,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c40', 1)">Detail</a>
+            <a onclick="showClassDetail('c41', 1)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt40.1' class='hiddenRow bg-success'>
+        <tr id='pt41.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadPDF - test_upload_invalid_pdf</div>
             </td>
@@ -3886,13 +4225,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c41', 3)">Detail</a>
+            <a onclick="showClassDetail('c42', 3)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt41.1' class='hiddenRow bg-success'>
+        <tr id='pt42.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestPipInstall - test_command_start</div>
             </td>
@@ -3901,7 +4240,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt41.2' class='hiddenRow bg-success'>
+        <tr id='pt42.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestPipInstall - test_foldername_database_location</div>
             </td>
@@ -3910,7 +4249,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt41.3' class='hiddenRow bg-success'>
+        <tr id='pt42.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestPipInstall - test_module_start</div>
             </td>
@@ -3922,19 +4261,19 @@ IndexError: list index out of range</pre>
 
     <tr id="su" class="skipClass">
         <td>TestReader</td>
+        <td class="text-center">9</td>
         <td class="text-center">8</td>
-        <td class="text-center">7</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">1</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c42', 8)">Detail</a>
+            <a onclick="showClassDetail('c43', 9)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='st42.1' class='none bg-warning'>
+        <tr id='st43.1' class='none bg-warning'>
             <td>
                 <div class='testcase'>TestReader - test_cb7_reader</div>
             </td>
@@ -3943,7 +4282,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt42.2' class='hiddenRow bg-success'>
+        <tr id='pt43.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReader - test_comic_MACOS_files</div>
             </td>
@@ -3952,7 +4291,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt42.3' class='hiddenRow bg-success'>
+        <tr id='pt43.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReader - test_comic_reader</div>
             </td>
@@ -3961,7 +4300,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt42.4' class='hiddenRow bg-success'>
+        <tr id='pt43.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReader - test_epub_reader</div>
             </td>
@@ -3970,7 +4309,16 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt42.5' class='hiddenRow bg-success'>
+        <tr id='pt43.5' class='hiddenRow bg-success'>
+            <td>
+                <div class='testcase'>TestReader - test_kepub_reader</div>
+            </td>
+            <td colspan='6' align='center'>PASS</td>
+        </tr>
+    
+    
+    
+        <tr id='pt43.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReader - test_pdf_reader</div>
             </td>
@@ -3979,7 +4327,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt42.6' class='hiddenRow bg-success'>
+        <tr id='pt43.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReader - test_single_file_comic</div>
             </td>
@@ -3988,7 +4336,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt42.7' class='hiddenRow bg-success'>
+        <tr id='pt43.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReader - test_sound_listener</div>
             </td>
@@ -3997,7 +4345,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt42.8' class='hiddenRow bg-success'>
+        <tr id='pt43.9' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReader - test_txt_reader</div>
             </td>
@@ -4015,13 +4363,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c43', 1)">Detail</a>
+            <a onclick="showClassDetail('c44', 1)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt43.1' class='hiddenRow bg-success'>
+        <tr id='pt44.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReadOnlyDatabase - test_readonly_path</div>
             </td>
@@ -4039,13 +4387,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c44', 8)">Detail</a>
+            <a onclick="showClassDetail('c45', 8)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt44.1' class='hiddenRow bg-success'>
+        <tr id='pt45.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestRegister - test_forgot_password</div>
             </td>
@@ -4054,7 +4402,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt44.2' class='hiddenRow bg-success'>
+        <tr id='pt45.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestRegister - test_illegal_email</div>
             </td>
@@ -4063,7 +4411,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt44.3' class='hiddenRow bg-success'>
+        <tr id='pt45.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestRegister - test_limit_domain</div>
             </td>
@@ -4072,7 +4420,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt44.4' class='hiddenRow bg-success'>
+        <tr id='pt45.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestRegister - test_register_no_server</div>
             </td>
@@ -4081,7 +4429,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt44.5' class='hiddenRow bg-success'>
+        <tr id='pt45.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestRegister - test_registering_only_email</div>
             </td>
@@ -4090,7 +4438,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt44.6' class='hiddenRow bg-success'>
+        <tr id='pt45.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestRegister - test_registering_user</div>
             </td>
@@ -4099,7 +4447,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt44.7' class='hiddenRow bg-success'>
+        <tr id='pt45.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestRegister - test_registering_user_fail</div>
             </td>
@@ -4108,7 +4456,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt44.8' class='hiddenRow bg-success'>
+        <tr id='pt45.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestRegister - test_user_change_password</div>
             </td>
@@ -4126,13 +4474,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c45', 4)">Detail</a>
+            <a onclick="showClassDetail('c46', 4)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt45.1' class='hiddenRow bg-success'>
+        <tr id='pt46.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReverseProxy - test_logout</div>
             </td>
@@ -4141,7 +4489,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt45.2' class='hiddenRow bg-success'>
+        <tr id='pt46.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReverseProxy - test_move_page</div>
             </td>
@@ -4150,7 +4498,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt45.3' class='hiddenRow bg-success'>
+        <tr id='pt46.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReverseProxy - test_next</div>
             </td>
@@ -4159,7 +4507,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt45.4' class='hiddenRow bg-success'>
+        <tr id='pt46.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestReverseProxy - test_reverse_about</div>
             </td>
@@ -4169,21 +4517,21 @@ IndexError: list index out of range</pre>
     
 
 
-    <tr id="su" class="skipClass">
+    <tr id="su" class="failClass">
         <td>TestShelf</td>
         <td class="text-center">17</td>
-        <td class="text-center">16</td>
-        <td class="text-center">0</td>
+        <td class="text-center">15</td>
+        <td class="text-center">1</td>
         <td class="text-center">0</td>
         <td class="text-center">1</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c46', 17)">Detail</a>
+            <a onclick="showClassDetail('c47', 17)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt46.1' class='hiddenRow bg-success'>
+        <tr id='pt47.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_access_shelf</div>
             </td>
@@ -4192,7 +4540,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.2' class='hiddenRow bg-success'>
+        <tr id='pt47.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_add_shelf_from_search</div>
             </td>
@@ -4201,16 +4549,36 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.3' class='hiddenRow bg-success'>
+        <tr id="ft47.3" class="none bg-danger">
             <td>
                 <div class='testcase'>TestShelf - test_adv_search_shelf</div>
             </td>
-            <td colspan='6' align='center'>PASS</td>
+            <td colspan='6'>
+                <div class="text-center">
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_ft47.3')">FAIL</a>
+                </div>
+                <!--css div popup start-->
+                <div id="div_ft47.3" class="popup_window test_output" style="display:block;">
+                    <div class='close_button pull-right'>
+                        <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
+                                onclick="document.getElementById('div_ft47.3').style.display='none'"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="text-left pull-left">
+                        <pre class="text-left">Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_shelf.py&#34;, line 569, in test_adv_search_shelf
+    self.assertEqual(len(self.adv_search({u&#39;include_shelf&#39;: u&#39;Search&#39;, &#39;title&#39;: &#39;book&#39;})), 2)
+AssertionError: 7 != 2</pre>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <!--css div popup end-->
+            </td>
         </tr>
     
     
     
-        <tr id='pt46.4' class='hiddenRow bg-success'>
+        <tr id='pt47.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_arrange_shelf</div>
             </td>
@@ -4219,7 +4587,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.5' class='hiddenRow bg-success'>
+        <tr id='pt47.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_create_public_shelf</div>
             </td>
@@ -4228,7 +4596,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.6' class='hiddenRow bg-success'>
+        <tr id='pt47.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_create_public_shelf_no_permission</div>
             </td>
@@ -4237,7 +4605,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.7' class='hiddenRow bg-success'>
+        <tr id='pt47.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_delete_book_of_shelf</div>
             </td>
@@ -4246,7 +4614,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.8' class='hiddenRow bg-success'>
+        <tr id='pt47.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_private_shelf</div>
             </td>
@@ -4255,7 +4623,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.9' class='hiddenRow bg-success'>
+        <tr id='pt47.9' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_public_private_shelf</div>
             </td>
@@ -4264,7 +4632,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.10' class='hiddenRow bg-success'>
+        <tr id='pt47.10' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_public_shelf</div>
             </td>
@@ -4273,7 +4641,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.11' class='hiddenRow bg-success'>
+        <tr id='pt47.11' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_rename_shelf</div>
             </td>
@@ -4282,7 +4650,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.12' class='hiddenRow bg-success'>
+        <tr id='pt47.12' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_shelf_action_non_shelf_edit_role</div>
             </td>
@@ -4291,7 +4659,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.13' class='hiddenRow bg-success'>
+        <tr id='pt47.13' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_shelf_anonymous</div>
             </td>
@@ -4300,19 +4668,19 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id="st46.14" class="none bg-warning">
+        <tr id="st47.14" class="none bg-warning">
             <td>
                 <div class='testcase'>TestShelf - test_shelf_database_change</div>
             </td>
             <td colspan='6'>
                 <div class="text-center">
-                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_st46.14')">SKIP</a>
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_st47.14')">SKIP</a>
                 </div>
                 <!--css div popup start-->
-                <div id="div_st46.14" class="popup_window test_output" style="display:none;">
+                <div id="div_st47.14" class="popup_window test_output" style="display:none;">
                     <div class='close_button pull-right'>
                         <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
-                                onclick="document.getElementById('div_st46.14').style.display='none'"><span
+                                onclick="document.getElementById('div_st47.14').style.display='none'"><span
                                 aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="text-left pull-left">
@@ -4326,7 +4694,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.15' class='hiddenRow bg-success'>
+        <tr id='pt47.15' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_shelf_long_name</div>
             </td>
@@ -4335,7 +4703,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.16' class='hiddenRow bg-success'>
+        <tr id='pt47.16' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_shelf_order</div>
             </td>
@@ -4344,7 +4712,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt46.17' class='hiddenRow bg-success'>
+        <tr id='pt47.17' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestShelf - test_xss_shelf</div>
             </td>
@@ -4362,13 +4730,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c47', 1)">Detail</a>
+            <a onclick="showClassDetail('c48', 1)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt47.1' class='hiddenRow bg-success'>
+        <tr id='pt48.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSocket - test_socket_communication</div>
             </td>
@@ -4386,13 +4754,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c48', 8)">Detail</a>
+            <a onclick="showClassDetail('c49', 8)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt48.1' class='hiddenRow bg-success'>
+        <tr id='pt49.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSplitLibrary - test_change_ebook</div>
             </td>
@@ -4401,7 +4769,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt48.2' class='hiddenRow bg-success'>
+        <tr id='pt49.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSplitLibrary - test_convert_ebook</div>
             </td>
@@ -4410,7 +4778,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt48.3' class='hiddenRow bg-success'>
+        <tr id='pt49.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSplitLibrary - test_download_book</div>
             </td>
@@ -4419,7 +4787,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt48.4' class='hiddenRow bg-success'>
+        <tr id='pt49.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSplitLibrary - test_email_ebook</div>
             </td>
@@ -4428,7 +4796,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt48.5' class='hiddenRow bg-success'>
+        <tr id='pt49.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSplitLibrary - test_kobo</div>
             </td>
@@ -4437,7 +4805,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt48.6' class='hiddenRow bg-success'>
+        <tr id='pt49.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSplitLibrary - test_thumbnails</div>
             </td>
@@ -4446,7 +4814,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt48.7' class='hiddenRow bg-success'>
+        <tr id='pt49.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSplitLibrary - test_upload_ebook</div>
             </td>
@@ -4455,7 +4823,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt48.8' class='hiddenRow bg-success'>
+        <tr id='pt49.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSplitLibrary - test_wrong_config_lib</div>
             </td>
@@ -4473,13 +4841,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c49', 1)">Detail</a>
+            <a onclick="showClassDetail('c50', 1)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt49.1' class='hiddenRow bg-success'>
+        <tr id='pt50.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestSystemdActivation - test_systemd_activation</div>
             </td>
@@ -4497,13 +4865,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c50', 1)">Detail</a>
+            <a onclick="showClassDetail('c51', 1)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt50.1' class='hiddenRow bg-success'>
+        <tr id='pt51.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestThumbnailsEnv - test_cover_cache_env_on_database_change</div>
             </td>
@@ -4521,13 +4889,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">1</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c51', 8)">Detail</a>
+            <a onclick="showClassDetail('c52', 8)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt51.1' class='hiddenRow bg-success'>
+        <tr id='pt52.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestThumbnails - test_cache_non_writable</div>
             </td>
@@ -4536,7 +4904,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt51.2' class='hiddenRow bg-success'>
+        <tr id='pt52.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestThumbnails - test_cache_of_deleted_book</div>
             </td>
@@ -4545,7 +4913,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt51.3' class='hiddenRow bg-success'>
+        <tr id='pt52.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestThumbnails - test_cover_cache_on_database_change</div>
             </td>
@@ -4554,7 +4922,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt51.4' class='hiddenRow bg-success'>
+        <tr id='pt52.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestThumbnails - test_cover_change_on_upload_new_cover</div>
             </td>
@@ -4563,7 +4931,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='st51.5' class='none bg-warning'>
+        <tr id='st52.5' class='none bg-warning'>
             <td>
                 <div class='testcase'>TestThumbnails - test_cover_for_series</div>
             </td>
@@ -4572,7 +4940,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt51.6' class='hiddenRow bg-success'>
+        <tr id='pt52.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestThumbnails - test_cover_on_upload_book</div>
             </td>
@@ -4581,7 +4949,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt51.7' class='hiddenRow bg-success'>
+        <tr id='pt52.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestThumbnails - test_remove_cover_from_cache</div>
             </td>
@@ -4590,7 +4958,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt51.8' class='hiddenRow bg-success'>
+        <tr id='pt52.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestThumbnails - test_sideloaded_book</div>
             </td>
@@ -4608,13 +4976,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">1</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c52', 9)">Detail</a>
+            <a onclick="showClassDetail('c53', 9)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt52.1' class='hiddenRow bg-success'>
+        <tr id='pt53.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUpdater - test_check_update_nightly_errors</div>
             </td>
@@ -4623,7 +4991,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt52.2' class='hiddenRow bg-success'>
+        <tr id='pt53.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUpdater - test_check_update_nightly_request_errors</div>
             </td>
@@ -4632,7 +5000,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt52.3' class='hiddenRow bg-success'>
+        <tr id='pt53.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUpdater - test_check_update_stable_errors</div>
             </td>
@@ -4641,7 +5009,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt52.4' class='hiddenRow bg-success'>
+        <tr id='pt53.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUpdater - test_check_update_stable_versions</div>
             </td>
@@ -4650,7 +5018,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt52.5' class='hiddenRow bg-success'>
+        <tr id='pt53.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUpdater - test_perform_update</div>
             </td>
@@ -4659,7 +5027,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt52.6' class='hiddenRow bg-success'>
+        <tr id='pt53.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUpdater - test_perform_update_stable_errors</div>
             </td>
@@ -4668,19 +5036,19 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id="st52.7" class="none bg-warning">
+        <tr id="st53.7" class="none bg-warning">
             <td>
                 <div class='testcase'>TestUpdater - test_perform_update_timeout</div>
             </td>
             <td colspan='6'>
                 <div class="text-center">
-                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_st52.7')">SKIP</a>
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_st53.7')">SKIP</a>
                 </div>
                 <!--css div popup start-->
-                <div id="div_st52.7" class="popup_window test_output" style="display:none;">
+                <div id="div_st53.7" class="popup_window test_output" style="display:none;">
                     <div class='close_button pull-right'>
                         <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
-                                onclick="document.getElementById('div_st52.7').style.display='none'"><span
+                                onclick="document.getElementById('div_st53.7').style.display='none'"><span
                                 aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="text-left pull-left">
@@ -4694,7 +5062,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt52.8' class='hiddenRow bg-success'>
+        <tr id='pt53.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUpdater - test_reconnect_database</div>
             </td>
@@ -4703,7 +5071,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt52.9' class='hiddenRow bg-success'>
+        <tr id='pt53.9' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUpdater - test_update_write_protect</div>
             </td>
@@ -4713,21 +5081,21 @@ IndexError: list index out of range</pre>
     
 
 
-    <tr id="su" class="passClass">
+    <tr id="su" class="failClass">
         <td>TestUploadAudio</td>
         <td class="text-center">12</td>
-        <td class="text-center">12</td>
-        <td class="text-center">0</td>
+        <td class="text-center">11</td>
+        <td class="text-center">1</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c53', 12)">Detail</a>
+            <a onclick="showClassDetail('c54', 12)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt53.1' class='hiddenRow bg-success'>
+        <tr id='pt54.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_aac</div>
             </td>
@@ -4736,7 +5104,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.2' class='hiddenRow bg-success'>
+        <tr id='pt54.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_aiff</div>
             </td>
@@ -4745,7 +5113,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.3' class='hiddenRow bg-success'>
+        <tr id='pt54.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_asf</div>
             </td>
@@ -4754,7 +5122,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.4' class='hiddenRow bg-success'>
+        <tr id='pt54.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_flac</div>
             </td>
@@ -4763,7 +5131,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.5' class='hiddenRow bg-success'>
+        <tr id='pt54.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_m4a</div>
             </td>
@@ -4772,7 +5140,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.6' class='hiddenRow bg-success'>
+        <tr id='pt54.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_m4b</div>
             </td>
@@ -4781,16 +5149,36 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.7' class='hiddenRow bg-success'>
+        <tr id="ft54.7" class="none bg-danger">
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_mp3</div>
             </td>
-            <td colspan='6' align='center'>PASS</td>
+            <td colspan='6'>
+                <div class="text-center">
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_ft54.7')">FAIL</a>
+                </div>
+                <!--css div popup start-->
+                <div id="div_ft54.7" class="popup_window test_output" style="display:block;">
+                    <div class='close_button pull-right'>
+                        <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
+                                onclick="document.getElementById('div_ft54.7').style.display='none'"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="text-left pull-left">
+                        <pre class="text-left">Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_upload_audio.py&#34;, line 121, in test_upload_mp3
+    self.assertAlmostEqual(diff(BytesIO(self.png_original), BytesIO(cover_image), delete_diff_file=True), 0.0, delta=0.006)
+AssertionError: 0.0075997182498730486 != 0.0 within 0.006 delta (0.0075997182498730486 difference)</pre>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <!--css div popup end-->
+            </td>
         </tr>
     
     
     
-        <tr id='pt53.8' class='hiddenRow bg-success'>
+        <tr id='pt54.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_mp4</div>
             </td>
@@ -4799,7 +5187,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.9' class='hiddenRow bg-success'>
+        <tr id='pt54.9' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_oggvorbis</div>
             </td>
@@ -4808,7 +5196,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.10' class='hiddenRow bg-success'>
+        <tr id='pt54.10' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_ogv</div>
             </td>
@@ -4817,7 +5205,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.11' class='hiddenRow bg-success'>
+        <tr id='pt54.11' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_opus</div>
             </td>
@@ -4826,7 +5214,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt53.12' class='hiddenRow bg-success'>
+        <tr id='pt54.12' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadAudio - test_upload_wav</div>
             </td>
@@ -4836,21 +5224,21 @@ IndexError: list index out of range</pre>
     
 
 
-    <tr id="su" class="passClass">
+    <tr id="su" class="failClass">
         <td>TestUploadEPubs</td>
         <td class="text-center">6</td>
-        <td class="text-center">6</td>
-        <td class="text-center">0</td>
+        <td class="text-center">5</td>
+        <td class="text-center">1</td>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c54', 6)">Detail</a>
+            <a onclick="showClassDetail('c55', 6)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt54.1' class='hiddenRow bg-success'>
+        <tr id='pt55.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadEPubs - test_upload_epub_comments</div>
             </td>
@@ -4859,7 +5247,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt54.2' class='hiddenRow bg-success'>
+        <tr id='pt55.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadEPubs - test_upload_epub_cover</div>
             </td>
@@ -4868,7 +5256,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt54.3' class='hiddenRow bg-success'>
+        <tr id='pt55.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadEPubs - test_upload_epub_cover_formats</div>
             </td>
@@ -4877,7 +5265,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt54.4' class='hiddenRow bg-success'>
+        <tr id='pt55.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadEPubs - test_upload_epub_duplicate</div>
             </td>
@@ -4886,7 +5274,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt54.5' class='hiddenRow bg-success'>
+        <tr id='pt55.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUploadEPubs - test_upload_epub_identifier</div>
             </td>
@@ -4895,11 +5283,31 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt54.6' class='hiddenRow bg-success'>
+        <tr id="ft55.6" class="none bg-danger">
             <td>
                 <div class='testcase'>TestUploadEPubs - test_upload_epub_lang</div>
             </td>
-            <td colspan='6' align='center'>PASS</td>
+            <td colspan='6'>
+                <div class="text-center">
+                    <a class="popup_link text-center" onfocus='blur()' onclick="showTestDetail('div_ft55.6')">FAIL</a>
+                </div>
+                <!--css div popup start-->
+                <div id="div_ft55.6" class="popup_window test_output" style="display:block;">
+                    <div class='close_button pull-right'>
+                        <button type="button" class="close" aria-label="Close" onfocus="this.blur();"
+                                onclick="document.getElementById('div_ft55.6').style.display='none'"><span
+                                aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="text-left pull-left">
+                        <pre class="text-left">Traceback (most recent call last):
+  File &#34;/home/ozzie/Development/calibre-web-test/test/test_upload_epubs.py&#34;, line 104, in test_upload_epub_lang
+    self.assertEqual(len(self.adv_search({u&#39;include_language&#39;: u&#39;Tedesco&#39;})), 1)
+AssertionError: 12 != 1</pre>
+                    </div>
+                    <div class="clearfix"></div>
+                </div>
+                <!--css div popup end-->
+            </td>
         </tr>
     
     
@@ -4913,13 +5321,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c55', 18)">Detail</a>
+            <a onclick="showClassDetail('c56', 18)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt55.1' class='hiddenRow bg-success'>
+        <tr id='pt56.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_edit_user_email</div>
             </td>
@@ -4928,7 +5336,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.2' class='hiddenRow bg-success'>
+        <tr id='pt56.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_list_visibility</div>
             </td>
@@ -4937,7 +5345,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.3' class='hiddenRow bg-success'>
+        <tr id='pt56.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_admin_role</div>
             </td>
@@ -4946,7 +5354,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.4' class='hiddenRow bg-success'>
+        <tr id='pt56.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_check_sort</div>
             </td>
@@ -4955,7 +5363,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.5' class='hiddenRow bg-success'>
+        <tr id='pt56.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_denied_tags</div>
             </td>
@@ -4964,7 +5372,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.6' class='hiddenRow bg-success'>
+        <tr id='pt56.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_download_role</div>
             </td>
@@ -4973,7 +5381,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.7' class='hiddenRow bg-success'>
+        <tr id='pt56.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_edit_button</div>
             </td>
@@ -4982,7 +5390,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.8' class='hiddenRow bg-success'>
+        <tr id='pt56.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_edit_email</div>
             </td>
@@ -4991,7 +5399,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.9' class='hiddenRow bg-success'>
+        <tr id='pt56.9' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_edit_kindle</div>
             </td>
@@ -5000,7 +5408,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.10' class='hiddenRow bg-success'>
+        <tr id='pt56.10' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_edit_language</div>
             </td>
@@ -5009,7 +5417,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.11' class='hiddenRow bg-success'>
+        <tr id='pt56.11' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_edit_locale</div>
             </td>
@@ -5018,7 +5426,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.12' class='hiddenRow bg-success'>
+        <tr id='pt56.12' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_edit_name</div>
             </td>
@@ -5027,7 +5435,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.13' class='hiddenRow bg-success'>
+        <tr id='pt56.13' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_edit_visiblility</div>
             </td>
@@ -5036,7 +5444,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.14' class='hiddenRow bg-success'>
+        <tr id='pt56.14' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_guest_edit</div>
             </td>
@@ -5045,7 +5453,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.15' class='hiddenRow bg-success'>
+        <tr id='pt56.15' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_remove_admin</div>
             </td>
@@ -5054,7 +5462,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.16' class='hiddenRow bg-success'>
+        <tr id='pt56.16' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_requests</div>
             </td>
@@ -5063,7 +5471,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.17' class='hiddenRow bg-success'>
+        <tr id='pt56.17' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_search</div>
             </td>
@@ -5072,7 +5480,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt55.18' class='hiddenRow bg-success'>
+        <tr id='pt56.18' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserList - test_user_list_sort</div>
             </td>
@@ -5090,13 +5498,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c56', 1)">Detail</a>
+            <a onclick="showClassDetail('c57', 1)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt56.1' class='hiddenRow bg-success'>
+        <tr id='pt57.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserLoad - test_user_change_vis</div>
             </td>
@@ -5114,13 +5522,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c57', 21)">Detail</a>
+            <a onclick="showClassDetail('c58', 21)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt57.1' class='hiddenRow bg-success'>
+        <tr id='pt58.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_allow_column_restriction</div>
             </td>
@@ -5129,7 +5537,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.2' class='hiddenRow bg-success'>
+        <tr id='pt58.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_allow_tag_restriction</div>
             </td>
@@ -5138,7 +5546,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.3' class='hiddenRow bg-success'>
+        <tr id='pt58.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_archived_format_template</div>
             </td>
@@ -5147,7 +5555,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.4' class='hiddenRow bg-success'>
+        <tr id='pt58.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_author_user_template</div>
             </td>
@@ -5156,7 +5564,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.5' class='hiddenRow bg-success'>
+        <tr id='pt58.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_best_user_template</div>
             </td>
@@ -5165,7 +5573,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.6' class='hiddenRow bg-success'>
+        <tr id='pt58.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_category_user_template</div>
             </td>
@@ -5174,7 +5582,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.7' class='hiddenRow bg-success'>
+        <tr id='pt58.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_deny_column_restriction</div>
             </td>
@@ -5183,7 +5591,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.8' class='hiddenRow bg-success'>
+        <tr id='pt58.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_deny_tag_restriction</div>
             </td>
@@ -5192,7 +5600,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.9' class='hiddenRow bg-success'>
+        <tr id='pt58.9' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_detail_random_user_template</div>
             </td>
@@ -5201,7 +5609,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.10' class='hiddenRow bg-success'>
+        <tr id='pt58.10' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_download_user_template</div>
             </td>
@@ -5210,7 +5618,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.11' class='hiddenRow bg-success'>
+        <tr id='pt58.11' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_format_user_template</div>
             </td>
@@ -5219,7 +5627,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.12' class='hiddenRow bg-success'>
+        <tr id='pt58.12' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_hot_user_template</div>
             </td>
@@ -5228,7 +5636,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.13' class='hiddenRow bg-success'>
+        <tr id='pt58.13' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_language_user_template</div>
             </td>
@@ -5237,7 +5645,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.14' class='hiddenRow bg-success'>
+        <tr id='pt58.14' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_limit_book_languages</div>
             </td>
@@ -5246,7 +5654,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.15' class='hiddenRow bg-success'>
+        <tr id='pt58.15' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_list_user_template</div>
             </td>
@@ -5255,7 +5663,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.16' class='hiddenRow bg-success'>
+        <tr id='pt58.16' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_publisher_user_template</div>
             </td>
@@ -5264,7 +5672,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.17' class='hiddenRow bg-success'>
+        <tr id='pt58.17' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_random_user_template</div>
             </td>
@@ -5273,7 +5681,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.18' class='hiddenRow bg-success'>
+        <tr id='pt58.18' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_read_user_template</div>
             </td>
@@ -5282,7 +5690,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.19' class='hiddenRow bg-success'>
+        <tr id='pt58.19' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_recent_user_template</div>
             </td>
@@ -5291,7 +5699,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.20' class='hiddenRow bg-success'>
+        <tr id='pt58.20' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_series_user_template</div>
             </td>
@@ -5300,7 +5708,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt57.21' class='hiddenRow bg-success'>
+        <tr id='pt58.21' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestUserTemplate - test_ui_language_settings</div>
             </td>
@@ -5318,13 +5726,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c58', 35)">Detail</a>
+            <a onclick="showClassDetail('c59', 35)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt58.1' class='hiddenRow bg-success'>
+        <tr id='pt59.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_about</div>
             </td>
@@ -5333,7 +5741,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.2' class='hiddenRow bg-success'>
+        <tr id='pt59.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_SMTP_Settings</div>
             </td>
@@ -5342,7 +5750,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.3' class='hiddenRow bg-success'>
+        <tr id='pt59.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_add_user</div>
             </td>
@@ -5351,7 +5759,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.4' class='hiddenRow bg-success'>
+        <tr id='pt59.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_password</div>
             </td>
@@ -5360,7 +5768,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.5' class='hiddenRow bg-success'>
+        <tr id='pt59.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_archived</div>
             </td>
@@ -5369,7 +5777,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.6' class='hiddenRow bg-success'>
+        <tr id='pt59.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_authors</div>
             </td>
@@ -5378,7 +5786,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.7' class='hiddenRow bg-success'>
+        <tr id='pt59.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_category</div>
             </td>
@@ -5387,7 +5795,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.8' class='hiddenRow bg-success'>
+        <tr id='pt59.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_file_formats</div>
             </td>
@@ -5396,7 +5804,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.9' class='hiddenRow bg-success'>
+        <tr id='pt59.9' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_hot</div>
             </td>
@@ -5405,7 +5813,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.10' class='hiddenRow bg-success'>
+        <tr id='pt59.10' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_language</div>
             </td>
@@ -5414,7 +5822,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.11' class='hiddenRow bg-success'>
+        <tr id='pt59.11' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_publisher</div>
             </td>
@@ -5423,7 +5831,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.12' class='hiddenRow bg-success'>
+        <tr id='pt59.12' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_random</div>
             </td>
@@ -5432,7 +5840,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.13' class='hiddenRow bg-success'>
+        <tr id='pt59.13' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_rated</div>
             </td>
@@ -5441,7 +5849,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.14' class='hiddenRow bg-success'>
+        <tr id='pt59.14' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_rating</div>
             </td>
@@ -5450,7 +5858,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.15' class='hiddenRow bg-success'>
+        <tr id='pt59.15' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_read</div>
             </td>
@@ -5459,7 +5867,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.16' class='hiddenRow bg-success'>
+        <tr id='pt59.16' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_admin_change_visibility_series</div>
             </td>
@@ -5468,7 +5876,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.17' class='hiddenRow bg-success'>
+        <tr id='pt59.17' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_allow_columns</div>
             </td>
@@ -5477,7 +5885,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.18' class='hiddenRow bg-success'>
+        <tr id='pt59.18' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_allow_tags</div>
             </td>
@@ -5486,7 +5894,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.19' class='hiddenRow bg-success'>
+        <tr id='pt59.19' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_archive_books</div>
             </td>
@@ -5495,7 +5903,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.20' class='hiddenRow bg-success'>
+        <tr id='pt59.20' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_authors_max_settings</div>
             </td>
@@ -5504,7 +5912,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.21' class='hiddenRow bg-success'>
+        <tr id='pt59.21' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_change_title</div>
             </td>
@@ -5513,7 +5921,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.22' class='hiddenRow bg-success'>
+        <tr id='pt59.22' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_checked_logged_in</div>
             </td>
@@ -5522,7 +5930,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.23' class='hiddenRow bg-success'>
+        <tr id='pt59.23' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_hide_custom_column</div>
             </td>
@@ -5531,7 +5939,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.24' class='hiddenRow bg-success'>
+        <tr id='pt59.24' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_link_column_to_read_status</div>
             </td>
@@ -5540,7 +5948,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.25' class='hiddenRow bg-success'>
+        <tr id='pt59.25' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_random_books_available</div>
             </td>
@@ -5549,7 +5957,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.26' class='hiddenRow bg-success'>
+        <tr id='pt59.26' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_read_status_visible</div>
             </td>
@@ -5558,7 +5966,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.27' class='hiddenRow bg-success'>
+        <tr id='pt59.27' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_request_link_column_to_read_status</div>
             </td>
@@ -5567,7 +5975,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.28' class='hiddenRow bg-success'>
+        <tr id='pt59.28' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_restrict_columns</div>
             </td>
@@ -5576,7 +5984,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.29' class='hiddenRow bg-success'>
+        <tr id='pt59.29' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_restrict_tags</div>
             </td>
@@ -5585,7 +5993,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.30' class='hiddenRow bg-success'>
+        <tr id='pt59.30' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_save_views_recent</div>
             </td>
@@ -5594,7 +6002,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.31' class='hiddenRow bg-success'>
+        <tr id='pt59.31' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_search_functions</div>
             </td>
@@ -5603,7 +6011,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.32' class='hiddenRow bg-success'>
+        <tr id='pt59.32' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_search_order</div>
             </td>
@@ -5612,7 +6020,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.33' class='hiddenRow bg-success'>
+        <tr id='pt59.33' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_search_string</div>
             </td>
@@ -5621,7 +6029,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.34' class='hiddenRow bg-success'>
+        <tr id='pt59.34' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_user_email_available</div>
             </td>
@@ -5630,7 +6038,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt58.35' class='hiddenRow bg-success'>
+        <tr id='pt59.35' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreWebVisibilitys - test_user_visibility_sidebar</div>
             </td>
@@ -5648,13 +6056,13 @@ IndexError: list index out of range</pre>
         <td class="text-center">0</td>
         <td class="text-center">0</td>
         <td class="text-center">
-            <a onclick="showClassDetail('c59', 16)">Detail</a>
+            <a onclick="showClassDetail('c60', 16)">Detail</a>
         </td>
     </tr>
 
     
     
-        <tr id='pt59.1' class='hiddenRow bg-success'>
+        <tr id='pt60.1' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_author_sort</div>
             </td>
@@ -5663,7 +6071,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.2' class='hiddenRow bg-success'>
+        <tr id='pt60.2' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_author_sort_comma</div>
             </td>
@@ -5672,7 +6080,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.3' class='hiddenRow bg-success'>
+        <tr id='pt60.3' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_author_sort_junior</div>
             </td>
@@ -5681,7 +6089,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.4' class='hiddenRow bg-success'>
+        <tr id='pt60.4' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_author_sort_oneword</div>
             </td>
@@ -5690,7 +6098,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.5' class='hiddenRow bg-success'>
+        <tr id='pt60.5' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_author_sort_roman</div>
             </td>
@@ -5699,7 +6107,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.6' class='hiddenRow bg-success'>
+        <tr id='pt60.6' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_check_Limit_Length</div>
             </td>
@@ -5708,7 +6116,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.7' class='hiddenRow bg-success'>
+        <tr id='pt60.7' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_check_char_replacement</div>
             </td>
@@ -5717,7 +6125,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.8' class='hiddenRow bg-success'>
+        <tr id='pt60.8' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_check_chinese_Characters</div>
             </td>
@@ -5726,7 +6134,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.9' class='hiddenRow bg-success'>
+        <tr id='pt60.9' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_check_deg_eur_replacement</div>
             </td>
@@ -5735,7 +6143,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.10' class='hiddenRow bg-success'>
+        <tr id='pt60.10' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_check_doubleS</div>
             </td>
@@ -5744,7 +6152,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.11' class='hiddenRow bg-success'>
+        <tr id='pt60.11' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_check_finish_Dot</div>
             </td>
@@ -5753,7 +6161,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.12' class='hiddenRow bg-success'>
+        <tr id='pt60.12' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_check_high23</div>
             </td>
@@ -5762,7 +6170,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.13' class='hiddenRow bg-success'>
+        <tr id='pt60.13' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_check_umlauts</div>
             </td>
@@ -5771,7 +6179,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.14' class='hiddenRow bg-success'>
+        <tr id='pt60.14' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_random_password</div>
             </td>
@@ -5780,7 +6188,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.15' class='hiddenRow bg-success'>
+        <tr id='pt60.15' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_split_authors</div>
             </td>
@@ -5789,7 +6197,7 @@ IndexError: list index out of range</pre>
     
     
     
-        <tr id='pt59.16' class='hiddenRow bg-success'>
+        <tr id='pt60.16' class='hiddenRow bg-success'>
             <td>
                 <div class='testcase'>TestCalibreHelper - test_whitespaces</div>
             </td>
@@ -5800,10 +6208,10 @@ IndexError: list index out of range</pre>
 
     <tr id='total_row' class="text-center bg-grey">
         <td>Total</td>
-        <td>523</td>
-        <td>515</td>
-        <td>0</td>
-        <td>1</td>
+        <td>538</td>
+        <td>521</td>
+        <td>7</td>
+        <td>3</td>
         <td>7</td>
         <td>&nbsp;</td>
     </tr>
@@ -5832,19 +6240,19 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>Platform</th>
-              <td>Linux 6.8.0-52-generic #53~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Wed Jan 15 19:18:46 UTC 2 x86_64 x86_64</td>
+              <td>Linux 6.8.0-90-generic #91-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov 18 14:14:30 UTC 2025 x86_64 x86_64</td>
               <td>Basic</td>
             </tr>
           
             <tr>
               <th>Python</th>
-              <td>3.10.12</td>
+              <td>3.12.3</td>
               <td>Basic</td>
             </tr>
           
             <tr>
               <th>APScheduler</th>
-              <td>3.11.0</td>
+              <td>3.11.1</td>
               <td>Basic</td>
             </tr>
           
@@ -5856,7 +6264,13 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>bleach</th>
-              <td>6.1.0</td>
+              <td>6.2.0</td>
+              <td>Basic</td>
+            </tr>
+          
+            <tr>
+              <th>certifi</th>
+              <td>2025.8.3</td>
               <td>Basic</td>
             </tr>
           
@@ -5868,13 +6282,13 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>cryptography</th>
-              <td>44.0.2</td>
+              <td>44.0.3</td>
               <td>Basic</td>
             </tr>
           
             <tr>
               <th>Flask</th>
-              <td>3.1.0</td>
+              <td>3.1.2</td>
               <td>Basic</td>
             </tr>
           
@@ -5910,13 +6324,7 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>greenlet</th>
-              <td>3.1.1</td>
-              <td>Basic</td>
-            </tr>
-          
-            <tr>
-              <th>iso-639</th>
-              <td>0.4.5</td>
+              <td>3.3.0</td>
               <td>Basic</td>
             </tr>
           
@@ -5928,19 +6336,25 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>lxml</th>
-              <td>5.3.1</td>
+              <td>5.3.2</td>
               <td>Basic</td>
             </tr>
           
             <tr>
               <th>netifaces-plus</th>
-              <td>0.12.4</td>
+              <td>0.12.5</td>
+              <td>Basic</td>
+            </tr>
+          
+            <tr>
+              <th>pycountry</th>
+              <td>24.6.1</td>
               <td>Basic</td>
             </tr>
           
             <tr>
               <th>pypdf</th>
-              <td>5.4.0</td>
+              <td>6.4.2</td>
               <td>Basic</td>
             </tr>
           
@@ -5964,19 +6378,19 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>requests</th>
-              <td>2.32.3</td>
+              <td>2.32.5</td>
               <td>Basic</td>
             </tr>
           
             <tr>
               <th>SQLAlchemy</th>
-              <td>2.0.39</td>
+              <td>2.0.45</td>
               <td>Basic</td>
             </tr>
           
             <tr>
               <th>tornado</th>
-              <td>6.4.2</td>
+              <td>6.5.4</td>
               <td>Basic</td>
             </tr>
           
@@ -5988,7 +6402,7 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>urllib3</th>
-              <td>2.3.0</td>
+              <td>2.6.2</td>
               <td>Basic</td>
             </tr>
           
@@ -6000,19 +6414,19 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>Werkzeug</th>
-              <td>3.1.3</td>
+              <td>3.1.4</td>
               <td>Basic</td>
             </tr>
           
             <tr>
               <th>google-api-python-client</th>
-              <td>2.165.0</td>
+              <td>2.187.0</td>
               <td>TestBackupMetadataGdrive</td>
             </tr>
           
             <tr>
               <th>httplib2</th>
-              <td>0.22.0</td>
+              <td>0.31.0</td>
               <td>TestBackupMetadataGdrive</td>
             </tr>
           
@@ -6030,19 +6444,19 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>PyYAML</th>
-              <td>6.0.2</td>
+              <td>6.0.3</td>
               <td>TestBackupMetadataGdrive</td>
             </tr>
           
             <tr>
               <th>google-api-python-client</th>
-              <td>2.165.0</td>
+              <td>2.187.0</td>
               <td>TestCliGdrivedb</td>
             </tr>
           
             <tr>
               <th>httplib2</th>
-              <td>0.22.0</td>
+              <td>0.31.0</td>
               <td>TestCliGdrivedb</td>
             </tr>
           
@@ -6060,19 +6474,19 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>PyYAML</th>
-              <td>6.0.2</td>
+              <td>6.0.3</td>
               <td>TestCliGdrivedb</td>
             </tr>
           
             <tr>
               <th>google-api-python-client</th>
-              <td>2.165.0</td>
+              <td>2.187.0</td>
               <td>TestEbookConvertCalibreGDrive</td>
             </tr>
           
             <tr>
               <th>httplib2</th>
-              <td>0.22.0</td>
+              <td>0.31.0</td>
               <td>TestEbookConvertCalibreGDrive</td>
             </tr>
           
@@ -6090,19 +6504,19 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>PyYAML</th>
-              <td>6.0.2</td>
+              <td>6.0.3</td>
               <td>TestEbookConvertCalibreGDrive</td>
             </tr>
           
             <tr>
               <th>google-api-python-client</th>
-              <td>2.165.0</td>
+              <td>2.187.0</td>
               <td>TestEbookConvertGDriveKepubify</td>
             </tr>
           
             <tr>
               <th>httplib2</th>
-              <td>0.22.0</td>
+              <td>0.31.0</td>
               <td>TestEbookConvertGDriveKepubify</td>
             </tr>
           
@@ -6120,7 +6534,7 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>PyYAML</th>
-              <td>6.0.2</td>
+              <td>6.0.3</td>
               <td>TestEbookConvertGDriveKepubify</td>
             </tr>
           
@@ -6137,20 +6551,14 @@ IndexError: list index out of range</pre>
             </tr>
           
             <tr>
-              <th>py7zr</th>
-              <td>0.22.0</td>
-              <td>TestEditBooks</td>
-            </tr>
-          
-            <tr>
               <th>google-api-python-client</th>
-              <td>2.165.0</td>
+              <td>2.187.0</td>
               <td>TestEditAuthorsGdrive</td>
             </tr>
           
             <tr>
               <th>httplib2</th>
-              <td>0.22.0</td>
+              <td>0.31.0</td>
               <td>TestEditAuthorsGdrive</td>
             </tr>
           
@@ -6168,25 +6576,25 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>PyYAML</th>
-              <td>6.0.2</td>
+              <td>6.0.3</td>
               <td>TestEditAuthorsGdrive</td>
             </tr>
           
             <tr>
               <th>beautifulsoup4</th>
-              <td>4.13.3</td>
+              <td>4.14.3</td>
               <td>TestLoadMetadata</td>
             </tr>
           
             <tr>
               <th>google-api-python-client</th>
-              <td>2.165.0</td>
+              <td>2.187.0</td>
               <td>TestEditBooksOnGdrive</td>
             </tr>
           
             <tr>
               <th>httplib2</th>
-              <td>0.22.0</td>
+              <td>0.31.0</td>
               <td>TestEditBooksOnGdrive</td>
             </tr>
           
@@ -6204,13 +6612,13 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>PyYAML</th>
-              <td>6.0.2</td>
+              <td>6.0.3</td>
               <td>TestEditBooksOnGdrive</td>
             </tr>
           
             <tr>
               <th>beautifulsoup4</th>
-              <td>4.13.3</td>
+              <td>4.14.3</td>
               <td>TestLoadMetadataScholar</td>
             </tr>
           
@@ -6222,13 +6630,13 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>google-api-python-client</th>
-              <td>2.165.0</td>
+              <td>2.187.0</td>
               <td>TestEmbedMetadataGdrive</td>
             </tr>
           
             <tr>
               <th>httplib2</th>
-              <td>0.22.0</td>
+              <td>0.31.0</td>
               <td>TestEmbedMetadataGdrive</td>
             </tr>
           
@@ -6246,19 +6654,19 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>PyYAML</th>
-              <td>6.0.2</td>
+              <td>6.0.3</td>
               <td>TestEmbedMetadataGdrive</td>
             </tr>
           
             <tr>
               <th>google-api-python-client</th>
-              <td>2.165.0</td>
+              <td>2.187.0</td>
               <td>TestSetupGdrive</td>
             </tr>
           
             <tr>
               <th>httplib2</th>
-              <td>0.22.0</td>
+              <td>0.31.0</td>
               <td>TestSetupGdrive</td>
             </tr>
           
@@ -6276,7 +6684,7 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>PyYAML</th>
-              <td>6.0.2</td>
+              <td>6.0.3</td>
               <td>TestSetupGdrive</td>
             </tr>
           
@@ -6288,19 +6696,19 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>python-Levenshtein</th>
-              <td>0.27.1</td>
+              <td>0.27.3</td>
               <td>TestGoodreads</td>
             </tr>
           
             <tr>
               <th>jsonschema</th>
-              <td>4.23.0</td>
+              <td>4.25.1</td>
               <td>TestKoboSync</td>
             </tr>
           
             <tr>
               <th>jsonschema</th>
-              <td>4.23.0</td>
+              <td>4.25.1</td>
               <td>TestKoboSyncBig</td>
             </tr>
           
@@ -6312,13 +6720,13 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>jsonschema</th>
-              <td>4.23.0</td>
+              <td>4.25.1</td>
               <td>TestLdapLogin</td>
             </tr>
           
             <tr>
               <th>python-ldap</th>
-              <td>3.4.4</td>
+              <td>3.4.5</td>
               <td>TestLdapLogin</td>
             </tr>
           
@@ -6330,8 +6738,14 @@ IndexError: list index out of range</pre>
           
             <tr>
               <th>SQLAlchemy-Utils</th>
-              <td>0.41.2</td>
+              <td>0.42.1</td>
               <td>TestOAuthLogin</td>
+            </tr>
+          
+            <tr>
+              <th>comicapi</th>
+              <td>3.2.0</td>
+              <td>TestReader</td>
             </tr>
           
             <tr>
@@ -6348,7 +6762,7 @@ IndexError: list index out of range</pre>
 </div>
 
 <script>
-    drawCircle(515, 0, 1, 7);
+    drawCircle(521, 7, 3, 7);
     showCase(5);
 </script>
 
