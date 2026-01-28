@@ -7,7 +7,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     {% if g.google_site_verification|length > 0 %}
       <meta name="google-site-verification" content="{{g.google_site_verification}}">
     {% endif %}
@@ -147,7 +147,7 @@
               <li class="nav-head hidden-xs">{{_('Browse')}}</li>
               {% for element in sidebar %}
                 {% if current_user.check_visibility(element['visibility']) and element['public'] %}
-                    <li id="nav_{{element['id']}}" {% if page == element['page'] %}class="active"{% endif %}><a href="{{url_for(element['link'], data=element['page'], sort_param='stored')}}"><span class="glyphicon {{element['glyph']}}"></span> {{_(element['text'])}}</a></li>
+                    <li id="nav_{{element['id']}}" {% if page == element['page'] %}class="active"{% endif %}><a href="{% if element['no_param'] %}{{url_for(element['link'], data=element['page'])}}{%else%}{{url_for(element['link'], data=element['page'], sort_param='stored')}}{% endif %}"><span class="glyphicon {{element['glyph']}}"></span> {{_(element['text'])}}</a></li>
                 {% endif %}
               {% endfor %}
               {% if current_user.is_authenticated or g.allow_anonymous %}
