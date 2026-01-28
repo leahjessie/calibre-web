@@ -4,6 +4,8 @@ from types import SimpleNamespace
 
 from flask import Flask
 
+from kobo_test_support import import_kobo
+
 
 def _make_app():
     app = Flask(__name__)
@@ -11,39 +13,8 @@ def _make_app():
     return app
 
 
-def _install_sync_token_stub():
-    import sys
-    import types
-
-    if "cps.services.SyncToken" in sys.modules:
-        return
-
-    module = types.ModuleType("cps.services.SyncToken")
-
-    class _StubSyncToken:
-        SYNC_TOKEN_HEADER = "x-kobo-synctoken"
-
-        def to_headers(self, headers):
-            headers[self.SYNC_TOKEN_HEADER] = "stub"
-
-    module.SyncToken = _StubSyncToken
-    sys.modules["cps.services.SyncToken"] = module
-
-
 def _import_kobo():
-    import importlib
-    import sys
-    import types
-
-    _install_sync_token_stub()
-
-    if "cps.gdriveutils" not in sys.modules:
-        gdrive_stub = types.ModuleType("cps.gdriveutils")
-        gdrive_stub.getFileFromEbooksFolder = lambda *args, **kwargs: None
-        gdrive_stub.do_gdrive_download = lambda *args, **kwargs: None
-        sys.modules["cps.gdriveutils"] = gdrive_stub
-
-    return importlib.import_module("cps.kobo")
+    return import_kobo()
 
 
 def test_generate_sync_response_sets_headers_and_body(monkeypatch):
