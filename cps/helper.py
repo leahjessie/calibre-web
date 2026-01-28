@@ -1083,6 +1083,28 @@ def get_download_link(book_id, book_format, client):
     book_format = book_format.split(".")[0]
     book = calibre_db.get_filtered_book(book_id, allow_show_archived=True)
     if book:
+        if client == "kobo":
+            title = " ".join(str(book.title).split()) if book.title else ""
+            if len(title) > 60:
+                title = f"{title[:60]}..."
+            log.debug(
+                "Kobo Download: book_id=%s entitlement_id=%s title=%s format=%s",
+                book.id,
+                book.uuid,
+                title,
+                book_format.upper(),
+            )
+            if current_user.is_authenticated:
+                is_synced = ub.session.query(ub.KoboSyncedBooks).filter(
+                    ub.KoboSyncedBooks.book_id == book.id,
+                    ub.KoboSyncedBooks.user_id == current_user.id,
+                ).count()
+                if not is_synced:
+                    log.debug(
+                        "Kobo Download: book_id=%s not marked synced for user_id=%s",
+                        book.id,
+                        current_user.id,
+                    )
         data1 = calibre_db.get_book_format(book.id, book_format.upper())
         if data1:
             # collect downloaded books only for registered user and not for anonymous user
