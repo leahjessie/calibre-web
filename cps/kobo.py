@@ -57,12 +57,21 @@ KOBO_STOREAPI_URL = "https://storeapi.kobo.com"
 KOBO_IMAGEHOST_URL = "https://cdn.kobo.com/book-images"
 
 SYNC_ITEM_LIMIT = 400
+LOG_SYNC_ENTITLEMENT_LIMIT = 8
+LOG_TITLE_MAX = 60
 
 kobo = Blueprint("kobo", __name__, url_prefix="/kobo/<auth_token>")
 kobo_auth.disable_failed_auth_redirect_for_blueprint(kobo)
 kobo_auth.register_url_value_preprocessor(kobo)
 
 log = logger.create()
+
+
+def _kobo_short_title(value):
+    if not value:
+        return ""
+    compact = " ".join(str(value).split())
+    return compact[:LOG_TITLE_MAX] + ("..." if len(compact) > LOG_TITLE_MAX else "")
 
 
 def get_store_url_for_current_request():
@@ -240,6 +249,14 @@ def HandleSyncRequest():
 
     new_archived_last_modified = datetime.min
     sync_results = []
+    sync_mode = "full" if sync_token.books_last_modified == datetime.min else "delta"
+    log.debug(
+        "Kobo Sync: summary start: mode=%s books_modified=%s books_created=%s rstate_modified=%s",
+        sync_mode,
+        sync_token.books_last_modified,
+        sync_token.books_last_created,
+        sync_token.reading_state_last_modified,
+    )
 
     # We reload the book database so that the user gets a fresh view of the library
     # in case of external changes (e.g: adding a book through Calibre).
@@ -287,10 +304,25 @@ def HandleSyncRequest():
     reading_states_in_new_entitlements = []
     books = changed_entries.limit(SYNC_ITEM_LIMIT)
     log.debug("Kobo Sync: selected to sync: {}".format(len(books.all())))
+    entitlement_logged = 0
+    entitlement_suppressed = 0
     for book in books:
         formats = [data.format for data in book.Books.data]
         if 'KEPUB' not in formats and config.config_kepubifypath and 'EPUB' in formats:
             helper.convert_book_format(book.Books.id, config.get_book_path(), 'EPUB', 'KEPUB', current_user.name)
+
+        if entitlement_logged < LOG_SYNC_ENTITLEMENT_LIMIT:
+            log.debug(
+                "Kobo Sync: entitlement: id=%s book_id=%s title=%s removed=%s modified=%s",
+                book.Books.uuid,
+                book.Books.id,
+                _kobo_short_title(book.Books.title),
+                book.is_archived is True,
+                book.Books.last_modified,
+            )
+            entitlement_logged += 1
+        else:
+            entitlement_suppressed += 1
 
         kobo_reading_state = get_or_create_reading_state(book.Books.id)
         entitlement = {
@@ -321,6 +353,8 @@ def HandleSyncRequest():
 
         new_books_last_created = max(ts_created, new_books_last_created)
         kobo_sync_status.add_synced_books(book.Books.id)
+    if entitlement_suppressed:
+        log.debug("Kobo Sync: entitlement: +%d more entries suppressed", entitlement_suppressed)
 
     max_change = changed_entries.filter(ub.ArchivedBook.is_archived)\
         .filter(ub.ArchivedBook.user_id == current_user.id) \
@@ -398,6 +432,31 @@ def generate_sync_response(sync_token, sync_results, set_cont=False):
     if set_cont:
         extra_headers["x-kobo-sync"] = "continue"
     sync_token.to_headers(extra_headers)
+
+    entitlement_entries = []
+    reading_state_entries = 0
+    for result in sync_results:
+        entitlement = result.get("ChangedEntitlement") or result.get("NewEntitlement")
+        if entitlement:
+            book_entitlement = entitlement.get("BookEntitlement") or {}
+            metadata = entitlement.get("BookMetadata") or {}
+            entitlement_id = book_entitlement.get("Id") or metadata.get("EntitlementId")
+            if entitlement_id:
+                entitlement_entries.append(entitlement_id)
+        if "ChangedReadingState" in result:
+            reading_state_entries += 1
+
+    entitlement_preview = entitlement_entries[:LOG_SYNC_ENTITLEMENT_LIMIT]
+    preview_text = ",".join(entitlement_preview) if entitlement_preview else "-"
+    if len(entitlement_entries) > LOG_SYNC_ENTITLEMENT_LIMIT:
+        preview_text = f"{preview_text},+{len(entitlement_entries) - LOG_SYNC_ENTITLEMENT_LIMIT} more"
+    log.debug(
+        "Kobo Sync: response summary: entitlements=%d reading_states=%d cont=%s preview=%s",
+        len(entitlement_entries),
+        reading_state_entries,
+        set_cont,
+        preview_text,
+    )
 
     # Convert results to JSON string *before* creating response
     try:
