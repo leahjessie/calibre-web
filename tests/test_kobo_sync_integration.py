@@ -229,7 +229,11 @@ def test_sync_over_limit_does_not_repeat_payload(monkeypatch, tmp_path):
 
 
 def _create_kobo_shelf_with_books(app_session, user_id, book_ids, shelf_name="Test Shelf"):
-    """Create a shelf marked for Kobo sync and add books to it."""
+    """Create a shelf marked for Kobo sync and add books to it.
+
+    Note: date_added is set slightly after shelf.last_modified to reproduce
+    the timing mismatch that causes the download loop bug (fixed in 309865c9).
+    """
     now = datetime.now(timezone.utc)
     shelf = ub.Shelf(
         user_id=user_id,
@@ -242,10 +246,12 @@ def _create_kobo_shelf_with_books(app_session, user_id, book_ids, shelf_name="Te
     app_session.add(shelf)
     app_session.flush()
 
+    # Set date_added slightly after shelf.last_modified to reproduce the bug condition
+    book_date_added = now + timedelta(milliseconds=100)
     for book_id in book_ids:
         book_shelf = ub.BookShelf(
             book_id=book_id,
-            date_added=now,
+            date_added=book_date_added,
         )
         book_shelf.ub_shelf = shelf
         app_session.add(book_shelf)
