@@ -15,206 +15,6 @@ from kobo_test_support import import_kobo
 from cps import db, ub, constants, kobo_sync_status
 
 
-def _seed_books(session, count):
-    now = datetime.now(timezone.utc)
-    for idx in range(count):
-        title = f"Book {idx + 1}"
-        book = db.Books(
-            title=title,
-            sort=title,
-            author_sort="",
-            timestamp=now - timedelta(days=idx + 2),
-            pubdate=db.Books.DEFAULT_PUBDATE,
-            series_index="1.0",
-            last_modified=now - timedelta(days=idx + 2),
-            path=f"book_{idx + 1}",
-            has_cover=0,
-            authors=[],
-            tags=[],
-            languages=[],
-        )
-        book.uuid = str(uuid4())
-        session.add(book)
-        session.flush()
-        session.add(
-            db.Data(
-                book=book.id,
-                book_format="EPUB",
-                uncompressed_size=123,
-                name=f"book_{idx + 1}.epub",
-            )
-        )
-    session.commit()
-
-def _create_kobo_shelf_with_books(app_session, user_id, book_ids, shelf_name="Test Shelf"):
-    """Create a shelf marked for Kobo sync and add books to it.
-
-    Note: date_added is set slightly after shelf.last_modified to reproduce
-    the timing mismatch that causes the download loop bug (fixed in 309865c9).
-    """
-    now = datetime.now(timezone.utc)
-    shelf = ub.Shelf(
-        user_id=user_id,
-        name=shelf_name,
-        uuid=str(uuid4()),
-        kobo_sync=True,
-        created=now,
-        last_modified=now,
-    )
-    app_session.add(shelf)
-    app_session.flush()
-
-    # Set date_added slightly after shelf.last_modified to reproduce the bug condition
-    book_date_added = now + timedelta(milliseconds=100)
-    for book_id in book_ids:
-        book_shelf = ub.BookShelf(
-            book_id=book_id,
-            date_added=book_date_added,
-        )
-        book_shelf.ub_shelf = shelf
-        app_session.add(book_shelf)
-
-    app_session.commit()
-    return shelf
-
-
-
-def _setup_kobo_test_environment(monkeypatch, kobo, user, sync_limit=None):
-    """Configure common monkeypatch settings for Kobo sync tests."""
-    monkeypatch.setattr(kobo, "current_user", user, raising=False)
-    monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
-    monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
-    monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
-    monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
-    monkeypatch.setattr(kobo.config, "config_kepubifypath", None, raising=False)
-    monkeypatch.setattr(kobo, "get_epub_layout", lambda *a, **k: None)
-    monkeypatch.setattr(kobo.calibre_db, "reconnect_db", lambda *a, **k: None)
-    monkeypatch.setattr(kobo.calibre_db, "common_filters", lambda *a, **k: true())
-
-    if sync_limit is not None:
-        monkeypatch.setattr(kobo, "SYNC_ITEM_LIMIT", sync_limit, raising=False)
-
-
-def _create_test_flask_app():
-    """Create a Flask test app with the required WSGI wrapper."""
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    original_wsgi_app = app.wsgi_app
-
-    class _WsgiWrapper:
-        def __init__(self, wsgi_app):
-            self._wsgi_app = wsgi_app
-            self.is_proxied = False
-
-        def __call__(self, environ, start_response):
-            return self._wsgi_app(environ, start_response)
-
-    app.wsgi_app = _WsgiWrapper(original_wsgi_app)
-    return app
-
-
-def _make_sync_request(kobo, app, session, token=None, base_url="http://example.com"):
-    """Make a sync request and return the response and parsed payload."""
-    headers = {}
-    if token:
-        headers["x-kobo-synctoken"] = token
-
-    with app.test_request_context(
-        "/kobo/testtoken/v1/library/sync",
-        base_url=base_url,
-        headers=headers if headers else None
-    ):
-        g.lib_sql = session
-        response = kobo.HandleSyncRequest.__wrapped__()
-
-    return response, json.loads(response.get_data(as_text=True))
-
-def _build_session():
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    conn = engine.connect()
-    conn.execute(text("ATTACH DATABASE ':memory:' AS calibre"))
-    db.Base.metadata.create_all(conn)
-    ub.Base.metadata.create_all(conn)
-    Session = sessionmaker(bind=conn)
-    return Session(), conn, engine
-
-def _build_split_sessions(tmp_path):
-    calibre_dir = tmp_path / "calibre"
-    calibre_dir.mkdir()
-    calibre_db_path = calibre_dir / "metadata.db"
-    app_db_path = tmp_path / "app.db"
-
-    calibre_engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    calibre_conn = calibre_engine.connect()
-    calibre_conn.execute(text("ATTACH DATABASE :calibre_db AS calibre"), {"calibre_db": str(calibre_db_path)})
-    db.Base.metadata.create_all(calibre_conn)
-    ub.Base.metadata.create_all(calibre_conn)
-    CalibreSession = sessionmaker(bind=calibre_conn)
-
-    app_engine = create_engine(
-        f"sqlite:///{app_db_path}",
-        connect_args={"check_same_thread": False},
-    )
-    ub.Base.metadata.create_all(app_engine)
-    AppSession = sessionmaker(bind=app_engine)
-
-    return CalibreSession(), calibre_conn, calibre_engine, AppSession(), app_engine, app_db_path
-
-@contextmanager
-def _kobo_test_session():
-    """Context manager for test session lifecycle."""
-    session, conn, engine = _build_session()
-    old_session = ub.session
-    ub.session = session
-    try:
-        yield session
-    finally:
-        session.close()
-        ub.session = old_session
-        conn.close()
-        engine.dispose()
-
-
-@contextmanager
-def _kobo_test_split_sessions(tmp_path):
-    """Context manager for split session lifecycle."""
-    calibre_session, calibre_conn, calibre_engine, app_session, app_engine, app_db_path = _build_split_sessions(tmp_path)
-    old_session = ub.session
-    old_app_db_path = ub.app_DB_path
-    ub.session = app_session
-    ub.app_DB_path = str(app_db_path)
-    try:
-        yield calibre_session, app_session
-    finally:
-        ub.session = old_session
-        ub.app_DB_path = old_app_db_path
-        app_session.close()
-        app_engine.dispose()
-        calibre_session.close()
-        calibre_conn.close()
-        calibre_engine.dispose()
-
-def _extract_entitlement_ids(payload):
-    ids = []
-    for item in payload:
-        for key in ("NewEntitlement", "ChangedEntitlement"):
-            if key in item:
-                ids.append(item[key]["BookEntitlement"]["Id"])
-                break
-    return ids
-
-
-def _collect_entitlement_ids(payload):
-    return set(_extract_entitlement_ids(payload))
-
 def test_sync_returns_entitlements_and_updates_synced_books(monkeypatch):
     kobo = import_kobo()
 
@@ -239,9 +39,6 @@ def test_sync_returns_entitlements_and_updates_synced_books(monkeypatch):
             .count()
             == 2
         )
-
-
-
 
 
 def test_sync_over_limit_does_not_repeat_payload(monkeypatch, tmp_path):
@@ -642,7 +439,6 @@ def test_add_book_to_kobo_shelf_triggers_kepub_conversion():
         "'from . import calibre_db, config, db, logger, ub, helper'"
     )
 
-
 def test_add_book_to_non_kobo_shelf_does_not_trigger_kepub_conversion():
     """
     Test that the KEPUB conversion logic only triggers for Kobo-synced shelves.
@@ -748,7 +544,6 @@ def test_only_kobo_shelves_or_condition_date_added_triggers_sync(monkeypatch):
             f"Expected book {books[2].uuid} to be synced via date_added trigger"
         )
 
-
 def test_only_kobo_shelves_or_condition_last_modified_triggers_sync(monkeypatch):
     """
     Test that the or_() fix works: a book is synced when ONLY last_modified triggers.
@@ -807,3 +602,199 @@ def test_only_kobo_shelves_or_condition_last_modified_triggers_sync(monkeypatch)
         assert _extract_entitlement_ids(entitlements2) == [books[0].uuid], (
             f"Expected book {books[0].uuid} to be synced via last_modified trigger"
         )
+
+
+#Internal helper functions for kobo sync integration testing
+def _seed_books(session, count):
+    now = datetime.now(timezone.utc)
+    for idx in range(count):
+        title = f"Book {idx + 1}"
+        book = db.Books(
+            title=title,
+            sort=title,
+            author_sort="",
+            timestamp=now - timedelta(days=idx + 2),
+            pubdate=db.Books.DEFAULT_PUBDATE,
+            series_index="1.0",
+            last_modified=now - timedelta(days=idx + 2),
+            path=f"book_{idx + 1}",
+            has_cover=0,
+            authors=[],
+            tags=[],
+            languages=[],
+        )
+        book.uuid = str(uuid4())
+        session.add(book)
+        session.flush()
+        session.add(
+            db.Data(
+                book=book.id,
+                book_format="EPUB",
+                uncompressed_size=123,
+                name=f"book_{idx + 1}.epub",
+            )
+        )
+    session.commit()
+
+def _create_kobo_shelf_with_books(app_session, user_id, book_ids, shelf_name="Test Shelf"):
+    """Create a shelf marked for Kobo sync and add books to it.
+
+    Note: date_added is set slightly after shelf.last_modified to reproduce
+    the timing mismatch that causes the download loop bug (fixed in 309865c9).
+    """
+    now = datetime.now(timezone.utc)
+    shelf = ub.Shelf(
+        user_id=user_id,
+        name=shelf_name,
+        uuid=str(uuid4()),
+        kobo_sync=True,
+        created=now,
+        last_modified=now,
+    )
+    app_session.add(shelf)
+    app_session.flush()
+
+    # Set date_added slightly after shelf.last_modified to reproduce the bug condition
+    book_date_added = now + timedelta(milliseconds=100)
+    for book_id in book_ids:
+        book_shelf = ub.BookShelf(
+            book_id=book_id,
+            date_added=book_date_added,
+        )
+        book_shelf.ub_shelf = shelf
+        app_session.add(book_shelf)
+
+    app_session.commit()
+    return shelf
+
+def _setup_kobo_test_environment(monkeypatch, kobo, user, sync_limit=None):
+    """Configure common monkeypatch settings for Kobo sync tests."""
+    monkeypatch.setattr(kobo, "current_user", user, raising=False)
+    monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+    monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
+    monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
+    monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
+    monkeypatch.setattr(kobo.config, "config_kepubifypath", None, raising=False)
+    monkeypatch.setattr(kobo, "get_epub_layout", lambda *a, **k: None)
+    monkeypatch.setattr(kobo.calibre_db, "reconnect_db", lambda *a, **k: None)
+    monkeypatch.setattr(kobo.calibre_db, "common_filters", lambda *a, **k: true())
+
+    if sync_limit is not None:
+        monkeypatch.setattr(kobo, "SYNC_ITEM_LIMIT", sync_limit, raising=False)
+
+def _create_test_flask_app():
+    """Create a Flask test app with the required WSGI wrapper."""
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    original_wsgi_app = app.wsgi_app
+
+    class _WsgiWrapper:
+        def __init__(self, wsgi_app):
+            self._wsgi_app = wsgi_app
+            self.is_proxied = False
+
+        def __call__(self, environ, start_response):
+            return self._wsgi_app(environ, start_response)
+
+    app.wsgi_app = _WsgiWrapper(original_wsgi_app)
+    return app
+
+def _make_sync_request(kobo, app, session, token=None, base_url="http://example.com"):
+    """Make a sync request and return the response and parsed payload."""
+    headers = {}
+    if token:
+        headers["x-kobo-synctoken"] = token
+
+    with app.test_request_context(
+        "/kobo/testtoken/v1/library/sync",
+        base_url=base_url,
+        headers=headers if headers else None
+    ):
+        g.lib_sql = session
+        response = kobo.HandleSyncRequest.__wrapped__()
+
+    return response, json.loads(response.get_data(as_text=True))
+
+def _build_session():
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    conn = engine.connect()
+    conn.execute(text("ATTACH DATABASE ':memory:' AS calibre"))
+    db.Base.metadata.create_all(conn)
+    ub.Base.metadata.create_all(conn)
+    Session = sessionmaker(bind=conn)
+    return Session(), conn, engine
+
+def _build_split_sessions(tmp_path):
+    calibre_dir = tmp_path / "calibre"
+    calibre_dir.mkdir()
+    calibre_db_path = calibre_dir / "metadata.db"
+    app_db_path = tmp_path / "app.db"
+
+    calibre_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    calibre_conn = calibre_engine.connect()
+    calibre_conn.execute(text("ATTACH DATABASE :calibre_db AS calibre"), {"calibre_db": str(calibre_db_path)})
+    db.Base.metadata.create_all(calibre_conn)
+    ub.Base.metadata.create_all(calibre_conn)
+    CalibreSession = sessionmaker(bind=calibre_conn)
+
+    app_engine = create_engine(
+        f"sqlite:///{app_db_path}",
+        connect_args={"check_same_thread": False},
+    )
+    ub.Base.metadata.create_all(app_engine)
+    AppSession = sessionmaker(bind=app_engine)
+
+    return CalibreSession(), calibre_conn, calibre_engine, AppSession(), app_engine, app_db_path
+
+@contextmanager
+def _kobo_test_session():
+    """Context manager for test session lifecycle."""
+    session, conn, engine = _build_session()
+    old_session = ub.session
+    ub.session = session
+    try:
+        yield session
+    finally:
+        session.close()
+        ub.session = old_session
+        conn.close()
+        engine.dispose()
+
+@contextmanager
+def _kobo_test_split_sessions(tmp_path):
+    """Context manager for split session lifecycle."""
+    calibre_session, calibre_conn, calibre_engine, app_session, app_engine, app_db_path = _build_split_sessions(tmp_path)
+    old_session = ub.session
+    old_app_db_path = ub.app_DB_path
+    ub.session = app_session
+    ub.app_DB_path = str(app_db_path)
+    try:
+        yield calibre_session, app_session
+    finally:
+        ub.session = old_session
+        ub.app_DB_path = old_app_db_path
+        app_session.close()
+        app_engine.dispose()
+        calibre_session.close()
+        calibre_conn.close()
+        calibre_engine.dispose()
+
+def _extract_entitlement_ids(payload):
+    ids = []
+    for item in payload:
+        for key in ("NewEntitlement", "ChangedEntitlement"):
+            if key in item:
+                ids.append(item[key]["BookEntitlement"]["Id"])
+                break
+    return ids
+
+def _collect_entitlement_ids(payload):
+    return set(_extract_entitlement_ids(payload))
