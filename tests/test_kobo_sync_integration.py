@@ -153,6 +153,11 @@ def _extract_entitlement_ids(payload):
                 break
     return ids
 
+
+def _collect_entitlement_ids(payload):
+    return set(_extract_entitlement_ids(payload))
+
+
 def test_sync_over_limit_does_not_repeat_payload(monkeypatch, tmp_path):
     kobo = import_kobo()
     calibre_session, calibre_conn, calibre_engine, app_session, app_engine, app_db_path = _build_split_sessions(
@@ -227,6 +232,157 @@ def test_sync_over_limit_does_not_repeat_payload(monkeypatch, tmp_path):
         calibre_session.close()
         calibre_conn.close()
         calibre_engine.dispose()
+
+
+def test_sync_unchanged_library_after_full_sync_returns_empty(monkeypatch, tmp_path):
+    kobo = import_kobo()
+    calibre_session, calibre_conn, calibre_engine, app_session, app_engine, app_db_path = _build_split_sessions(
+        tmp_path
+    )
+    old_session = ub.session
+    old_app_db_path = ub.app_DB_path
+    ub.session = app_session
+    ub.app_DB_path = str(app_db_path)
+    try:
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        app_session.add(user)
+        app_session.commit()
+
+        sync_limit = 3
+        _seed_books(calibre_session, sync_limit + 2)
+
+        monkeypatch.setattr(kobo, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo, "SYNC_ITEM_LIMIT", sync_limit, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
+        monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kepubifypath", None, raising=False)
+        monkeypatch.setattr(kobo, "get_epub_layout", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "reconnect_db", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "common_filters", lambda *a, **k: true())
+
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        original_wsgi_app = app.wsgi_app
+
+        class _WsgiWrapper:
+            def __init__(self, wsgi_app):
+                self._wsgi_app = wsgi_app
+                self.is_proxied = False
+
+            def __call__(self, environ, start_response):
+                return self._wsgi_app(environ, start_response)
+
+        app.wsgi_app = _WsgiWrapper(original_wsgi_app)
+
+        with app.test_request_context("/kobo/testtoken/v1/library/sync", base_url="http://example.com"):
+            g.lib_sql = calibre_session
+            response1 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload1 = json.loads(response1.get_data(as_text=True))
+        token1 = response1.headers.get("x-kobo-synctoken")
+        assert len(payload1) == sync_limit
+        assert response1.headers.get("x-kobo-sync") == "continue"
+
+        with app.test_request_context(
+            "/kobo/testtoken/v1/library/sync",
+            base_url="http://example.com",
+            headers={"x-kobo-synctoken": token1},
+        ):
+            g.lib_sql = calibre_session
+            response2 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload2 = json.loads(response2.get_data(as_text=True))
+        token2 = response2.headers.get("x-kobo-synctoken")
+        assert len(payload2) == 2
+        assert response2.headers.get("x-kobo-sync") is None
+
+        with app.test_request_context(
+            "/kobo/testtoken/v1/library/sync",
+            base_url="http://example.com",
+            headers={"x-kobo-synctoken": token2},
+        ):
+            g.lib_sql = calibre_session
+            response3 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload3 = json.loads(response3.get_data(as_text=True))
+        assert payload3 == [], "Expected no payload when library is unchanged after full sync."
+    finally:
+        ub.session = old_session
+        ub.app_DB_path = old_app_db_path
+        app_session.close()
+        app_engine.dispose()
+        calibre_session.close()
+        calibre_conn.close()
+        calibre_engine.dispose()
+
+
+def test_sync_mixed_modified_and_unchanged_only_returns_modified(monkeypatch):
+    kobo = import_kobo()
+    session, conn, engine = _build_session()
+    old_session = ub.session
+    ub.session = session
+    try:
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        session.add(user)
+        session.commit()
+
+        _seed_books(session, 4)
+        books = session.query(db.Books).order_by(db.Books.id).all()
+
+        monkeypatch.setattr(kobo, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
+        monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kepubifypath", None, raising=False)
+        monkeypatch.setattr(kobo, "get_epub_layout", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "reconnect_db", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "common_filters", lambda *a, **k: true())
+
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        original_wsgi_app = app.wsgi_app
+
+        class _WsgiWrapper:
+            def __init__(self, wsgi_app):
+                self._wsgi_app = wsgi_app
+                self.is_proxied = False
+
+            def __call__(self, environ, start_response):
+                return self._wsgi_app(environ, start_response)
+
+        app.wsgi_app = _WsgiWrapper(original_wsgi_app)
+
+        with app.test_request_context("/kobo/testtoken/v1/library/sync", base_url="http://example.com"):
+            g.lib_sql = session
+            response1 = kobo.HandleSyncRequest.__wrapped__()
+
+        token1 = response1.headers.get("x-kobo-synctoken")
+        books[0].last_modified = datetime.now(timezone.utc) + timedelta(days=1)
+        books[2].last_modified = datetime.now(timezone.utc) + timedelta(days=2)
+        session.commit()
+        expected_ids = {books[0].uuid, books[2].uuid}
+
+        with app.test_request_context(
+            "/kobo/testtoken/v1/library/sync",
+            base_url="http://example.com",
+            headers={"x-kobo-synctoken": token1},
+        ):
+            g.lib_sql = session
+            response2 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload2 = json.loads(response2.get_data(as_text=True))
+        returned_ids = _collect_entitlement_ids(payload2)
+        assert returned_ids == expected_ids, (
+            f"Expected only modified IDs {expected_ids}, got {returned_ids}"
+        )
+    finally:
+        session.close()
+        ub.session = old_session
+        conn.close()
+        engine.dispose()
 
 
 def test_sync_exactly_limit_does_not_set_continue_header(monkeypatch):
@@ -523,6 +679,96 @@ def test_only_kobo_shelves_modified_synced_book_is_resent(monkeypatch):
 
         assert len(entitlements2) == 1, "Expected modified synced book to be returned again."
         assert _extract_entitlement_ids(entitlements2) == [book.uuid]
+    finally:
+        session.close()
+        ub.session = old_session
+        conn.close()
+        engine.dispose()
+
+
+def test_only_kobo_shelves_modified_synced_book_paginates_without_repeat(monkeypatch):
+    kobo = import_kobo()
+    session, conn, engine = _build_session()
+    old_session = ub.session
+    ub.session = session
+    try:
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        user.kobo_only_shelves_sync = 1
+        session.add(user)
+        session.commit()
+
+        _seed_books(session, 5)
+        books = session.query(db.Books).order_by(db.Books.id).all()
+        _create_kobo_shelf_with_books(session, user.id, [b.id for b in books], "Kobo Shelf")
+
+        monkeypatch.setattr(kobo, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo, "SYNC_ITEM_LIMIT", 10, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
+        monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kepubifypath", None, raising=False)
+        monkeypatch.setattr(kobo, "get_epub_layout", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "reconnect_db", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "common_filters", lambda *a, **k: true())
+
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        original_wsgi_app = app.wsgi_app
+
+        class _WsgiWrapper:
+            def __init__(self, wsgi_app):
+                self._wsgi_app = wsgi_app
+                self.is_proxied = False
+
+            def __call__(self, environ, start_response):
+                return self._wsgi_app(environ, start_response)
+
+        app.wsgi_app = _WsgiWrapper(original_wsgi_app)
+
+        with app.test_request_context("/kobo/testtoken/v1/library/sync", base_url="http://example.com"):
+            g.lib_sql = session
+            initial_sync = kobo.HandleSyncRequest.__wrapped__()
+
+        token_full = initial_sync.headers.get("x-kobo-synctoken")
+        assert initial_sync.headers.get("x-kobo-sync") is None
+
+        modified_books = [books[0], books[2], books[4]]
+        for offset, book in enumerate(modified_books, start=1):
+            book.last_modified = datetime.now(timezone.utc) + timedelta(days=offset)
+        session.commit()
+        expected_ids = {book.uuid for book in modified_books}
+
+        monkeypatch.setattr(kobo, "SYNC_ITEM_LIMIT", 2, raising=False)
+
+        with app.test_request_context(
+            "/kobo/testtoken/v1/library/sync",
+            base_url="http://example.com",
+            headers={"x-kobo-synctoken": token_full},
+        ):
+            g.lib_sql = session
+            response1 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload1 = json.loads(response1.get_data(as_text=True))
+        ids1 = _collect_entitlement_ids(payload1)
+        token1 = response1.headers.get("x-kobo-synctoken")
+        assert response1.headers.get("x-kobo-sync") == "continue"
+        assert len(ids1) == 2
+
+        with app.test_request_context(
+            "/kobo/testtoken/v1/library/sync",
+            base_url="http://example.com",
+            headers={"x-kobo-synctoken": token1},
+        ):
+            g.lib_sql = session
+            response2 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload2 = json.loads(response2.get_data(as_text=True))
+        ids2 = _collect_entitlement_ids(payload2)
+        assert response2.headers.get("x-kobo-sync") is None
+        assert len(ids2) == 1
+        assert ids1.isdisjoint(ids2)
+        assert ids1 | ids2 == expected_ids
     finally:
         session.close()
         ub.session = old_session
