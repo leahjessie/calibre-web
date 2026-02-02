@@ -172,6 +172,7 @@ def test_sync_over_limit_does_not_repeat_payload(monkeypatch, tmp_path):
 
         monkeypatch.setattr(kobo, "current_user", user, raising=False)
         monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
         monkeypatch.setattr(kobo, "SYNC_ITEM_LIMIT", sync_limit, raising=False)
         monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
         monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
@@ -284,6 +285,7 @@ def test_only_kobo_shelves_no_repeat_books_after_sync(monkeypatch):
 
         monkeypatch.setattr(kobo, "current_user", user, raising=False)
         monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
         monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
         monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
         monkeypatch.setattr(kobo.config, "config_kepubifypath", None, raising=False)
@@ -365,6 +367,7 @@ def test_only_kobo_shelves_pagination_no_repeats(monkeypatch):
 
         monkeypatch.setattr(kobo, "current_user", user, raising=False)
         monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
         monkeypatch.setattr(kobo, "SYNC_ITEM_LIMIT", sync_limit, raising=False)
         monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
         monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
@@ -471,6 +474,7 @@ def test_sync_shelves_updates_tags_last_modified(monkeypatch):
 
         monkeypatch.setattr(kobo, "current_user", user, raising=False)
         monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
         monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
         monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
         monkeypatch.setattr(kobo.config, "config_kepubifypath", None, raising=False)
