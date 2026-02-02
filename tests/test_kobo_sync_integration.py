@@ -996,3 +996,199 @@ def test_sync_shelves_updates_tags_last_modified(monkeypatch):
         ub.session = old_session
         conn.close()
         engine.dispose()
+
+
+def test_add_book_to_kobo_shelf_triggers_kepub_conversion(monkeypatch):
+    """
+    Test that adding a book to a Kobo-synced shelf triggers KEPUB conversion.
+
+    When a book with EPUB format (but no KEPUB) is added to a shelf marked
+    for Kobo sync, it should trigger kepubify conversion immediately rather
+    than waiting for the next sync request.
+    """
+    from unittest.mock import MagicMock, patch
+    from flask import Flask, g
+
+    # Install stubs before any cps imports
+    from kobo_test_support import install_stub_modules
+    install_stub_modules()
+
+    # Patch the decorator to be a no-op before importing shelf
+    def noop_decorator(func):
+        return func
+
+    import sys
+
+    # Clear cached modules to ensure fresh import with patched decorator
+    modules_to_clear = [k for k in sys.modules.keys() if k.startswith("cps.shelf")]
+    for mod in modules_to_clear:
+        del sys.modules[mod]
+
+    with patch("cps.usermanagement.user_login_required", noop_decorator):
+        from cps import shelf as shelf_module, helper
+
+        session, conn, engine = _build_session()
+        old_session = ub.session
+        ub.session = session
+
+        try:
+            # Create user
+            user = ub.User(name="test", email="test@example.org", role=0)
+            session.add(user)
+            session.commit()
+
+            # Create a book with EPUB format only
+            _seed_books(session, 1)
+            book = session.query(db.Books).first()
+
+            # Create a Kobo-synced shelf
+            now = datetime.now(timezone.utc)
+            shelf = ub.Shelf(
+                user_id=user.id,
+                name="Kobo Shelf",
+                uuid=str(uuid4()),
+                kobo_sync=True,
+                created=now,
+                last_modified=now,
+            )
+            session.add(shelf)
+            session.commit()
+
+            # Mock convert_book_format to track calls
+            mock_convert = MagicMock()
+
+            # Set up Flask app with shelf blueprint
+            app = Flask(__name__)
+            app.config["TESTING"] = True
+            app.secret_key = "test-secret-key"
+            app.register_blueprint(shelf_module.shelf)
+
+            # Apply monkeypatches
+            monkeypatch.setattr(shelf_module, "current_user", user, raising=False)
+            monkeypatch.setattr(shelf_module.config, "config_kepubifypath", "/usr/bin/kepubify", raising=False)
+            monkeypatch.setattr(shelf_module.config, "get_book_path", lambda: "/fake/path", raising=False)
+            # Patch helper.convert_book_format - shelf.py will import helper when the fix is applied
+            monkeypatch.setattr(helper, "convert_book_format", mock_convert, raising=False)
+            monkeypatch.setattr(shelf_module, "check_shelf_edit_permissions", lambda s: True, raising=False)
+
+            # Set up session in g.lib_sql for each request (this is how calibre_db.session works)
+            @app.before_request
+            def setup_db():
+                g.lib_sql = session
+
+            with app.test_client() as client:
+                # Make POST request to add book to shelf
+                client.post(
+                    f"/shelf/add/{shelf.id}/{book.id}",
+                    headers={"X-Requested-With": "XMLHttpRequest"},
+                )
+
+            # Verify convert_book_format was called with correct arguments
+            assert mock_convert.called, (
+                "Expected helper.convert_book_format to be called when adding "
+                "a book to a Kobo-synced shelf with kepubifypath configured"
+            )
+            call_args = mock_convert.call_args
+            assert call_args[0][0] == book.id, f"Expected book_id {book.id}, got {call_args[0][0]}"
+            assert call_args[0][2] == "EPUB", f"Expected source format 'EPUB', got {call_args[0][2]}"
+            assert call_args[0][3] == "KEPUB", f"Expected target format 'KEPUB', got {call_args[0][3]}"
+
+        finally:
+            session.close()
+            ub.session = old_session
+            conn.close()
+            engine.dispose()
+
+
+def test_add_book_to_non_kobo_shelf_does_not_trigger_kepub_conversion(monkeypatch):
+    """
+    Test that adding a book to a regular (non-Kobo) shelf does NOT trigger KEPUB conversion.
+    """
+    from unittest.mock import MagicMock, patch
+    from flask import Flask, g
+
+    # Install stubs before any cps imports
+    from kobo_test_support import install_stub_modules
+    install_stub_modules()
+
+    # Patch the decorator to be a no-op before importing shelf
+    def noop_decorator(func):
+        return func
+
+    import sys
+
+    # Clear cached modules to ensure fresh import with patched decorator
+    modules_to_clear = [k for k in sys.modules.keys() if k.startswith("cps.shelf")]
+    for mod in modules_to_clear:
+        del sys.modules[mod]
+
+    with patch("cps.usermanagement.user_login_required", noop_decorator):
+        from cps import shelf as shelf_module, helper
+
+        session, conn, engine = _build_session()
+        old_session = ub.session
+        ub.session = session
+
+        try:
+            # Create user
+            user = ub.User(name="test", email="test@example.org", role=0)
+            session.add(user)
+            session.commit()
+
+            # Create a book with EPUB format only
+            _seed_books(session, 1)
+            book = session.query(db.Books).first()
+
+            # Create a regular shelf (NOT marked for Kobo sync)
+            now = datetime.now(timezone.utc)
+            shelf = ub.Shelf(
+                user_id=user.id,
+                name="Regular Shelf",
+                uuid=str(uuid4()),
+                kobo_sync=False,  # Not a Kobo shelf
+                created=now,
+                last_modified=now,
+            )
+            session.add(shelf)
+            session.commit()
+
+            # Mock convert_book_format to track calls
+            mock_convert = MagicMock()
+
+            # Set up Flask app with shelf blueprint
+            app = Flask(__name__)
+            app.config["TESTING"] = True
+            app.secret_key = "test-secret-key"
+            app.register_blueprint(shelf_module.shelf)
+
+            # Apply monkeypatches
+            monkeypatch.setattr(shelf_module, "current_user", user, raising=False)
+            monkeypatch.setattr(shelf_module.config, "config_kepubifypath", "/usr/bin/kepubify", raising=False)
+            monkeypatch.setattr(shelf_module.config, "get_book_path", lambda: "/fake/path", raising=False)
+            # Patch helper.convert_book_format - shelf.py will import helper when the fix is applied
+            monkeypatch.setattr(helper, "convert_book_format", mock_convert, raising=False)
+            monkeypatch.setattr(shelf_module, "check_shelf_edit_permissions", lambda s: True, raising=False)
+
+            # Set up session in g.lib_sql for each request
+            @app.before_request
+            def setup_db():
+                g.lib_sql = session
+
+            with app.test_client() as client:
+                # Make POST request to add book to shelf
+                client.post(
+                    f"/shelf/add/{shelf.id}/{book.id}",
+                    headers={"X-Requested-With": "XMLHttpRequest"},
+                )
+
+            # Verify convert_book_format was NOT called
+            assert not mock_convert.called, (
+                "Expected helper.convert_book_format NOT to be called when adding "
+                "a book to a non-Kobo shelf"
+            )
+
+        finally:
+            session.close()
+            ub.session = old_session
+            conn.close()
+            engine.dispose()
