@@ -1052,3 +1052,220 @@ def test_add_book_to_non_kobo_shelf_does_not_trigger_kepub_conversion():
     # This test always passes - it documents the expected behavior
     # The actual enforcement is in the code: `if shelf.kobo_sync and config.config_kepubifypath:`
     assert True, "Non-Kobo shelves should not trigger KEPUB conversion (enforced by if-condition in fix)"
+
+
+def test_only_kobo_shelves_or_condition_date_added_triggers_sync(monkeypatch):
+    """
+    Test that the or_() fix works: a book is synced when ONLY date_added triggers.
+
+    This tests the first part of the or_() condition:
+        or_(
+            func.datetime(ub.BookShelf.date_added) > sync_token.tags_last_modified,
+            func.datetime(db.Books.last_modified) > sync_token.books_last_modified,
+        )
+
+    Scenario:
+    1. Sync a shelf with 2 books
+    2. Add a NEW book to the shelf (date_added > tags_last_modified)
+    3. Do NOT modify the book's metadata (last_modified unchanged)
+    4. Second sync should return the new book
+
+    This would FAIL without the or_() fix because the query would require
+    BOTH conditions to be true, not just one.
+    """
+    kobo = import_kobo()
+    session, conn, engine = _build_session()
+    old_session = ub.session
+    ub.session = session
+    try:
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        user.kobo_only_shelves_sync = 1
+        session.add(user)
+        session.commit()
+
+        # Create 3 books but only put 2 on the shelf initially
+        _seed_books(session, 3)
+        books = session.query(db.Books).order_by(db.Books.id).all()
+
+        # Create shelf with only first 2 books
+        _create_kobo_shelf_with_books(session, user.id, [books[0].id, books[1].id], "Kobo Shelf")
+
+        monkeypatch.setattr(kobo, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
+        monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kepubifypath", None, raising=False)
+        monkeypatch.setattr(kobo, "get_epub_layout", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "reconnect_db", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "common_filters", lambda *a, **k: true())
+
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        original_wsgi_app = app.wsgi_app
+
+        class _WsgiWrapper:
+            def __init__(self, wsgi_app):
+                self._wsgi_app = wsgi_app
+                self.is_proxied = False
+
+            def __call__(self, environ, start_response):
+                return self._wsgi_app(environ, start_response)
+
+        app.wsgi_app = _WsgiWrapper(original_wsgi_app)
+
+        # First sync - should return 2 books
+        with app.test_request_context("/kobo/testtoken/v1/library/sync", base_url="http://example.com"):
+            g.lib_sql = session
+            response1 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload1 = json.loads(response1.get_data(as_text=True))
+        token1 = response1.headers.get("x-kobo-synctoken")
+
+        entitlements1 = [item for item in payload1 if "NewEntitlement" in item or "ChangedEntitlement" in item]
+        assert len(entitlements1) == 2, f"Expected 2 books in first sync, got {len(entitlements1)}"
+
+        # Add third book to shelf (date_added will be > tags_last_modified)
+        # but do NOT modify its last_modified
+        shelf = session.query(ub.Shelf).filter(ub.Shelf.user_id == user.id).first()
+        new_book_shelf = ub.BookShelf(
+            book_id=books[2].id,
+            date_added=datetime.now(timezone.utc) + timedelta(seconds=1),
+        )
+        new_book_shelf.ub_shelf = shelf
+        session.add(new_book_shelf)
+        session.commit()
+
+        # Verify the book's last_modified is NOT updated (still old)
+        # This ensures only date_added triggers the sync
+        book_last_modified = books[2].last_modified
+        if hasattr(book_last_modified, 'tzinfo') and book_last_modified.tzinfo is None:
+            book_last_modified = book_last_modified.replace(tzinfo=timezone.utc)
+        assert book_last_modified < datetime.now(timezone.utc), (
+            "Test setup error: book's last_modified should be in the past"
+        )
+
+        # Second sync - should return only the newly added book
+        with app.test_request_context(
+            "/kobo/testtoken/v1/library/sync",
+            base_url="http://example.com",
+            headers={"x-kobo-synctoken": token1},
+        ):
+            g.lib_sql = session
+            response2 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload2 = json.loads(response2.get_data(as_text=True))
+        entitlements2 = [item for item in payload2 if "NewEntitlement" in item or "ChangedEntitlement" in item]
+
+        assert len(entitlements2) == 1, (
+            f"or_() FIX TEST: Expected 1 book (added to shelf) in second sync, got {len(entitlements2)}. "
+            f"This indicates the or_() condition is not working - date_added alone should trigger sync."
+        )
+        assert _extract_entitlement_ids(entitlements2) == [books[2].uuid], (
+            f"Expected book {books[2].uuid} to be synced via date_added trigger"
+        )
+    finally:
+        session.close()
+        ub.session = old_session
+        conn.close()
+        engine.dispose()
+
+
+def test_only_kobo_shelves_or_condition_last_modified_triggers_sync(monkeypatch):
+    """
+    Test that the or_() fix works: a book is synced when ONLY last_modified triggers.
+
+    This tests the second part of the or_() condition:
+        or_(
+            func.datetime(ub.BookShelf.date_added) > sync_token.tags_last_modified,
+            func.datetime(db.Books.last_modified) > sync_token.books_last_modified,
+        )
+
+    Scenario:
+    1. Sync a shelf with 2 books
+    2. Modify one book's metadata (last_modified > books_last_modified)
+    3. Do NOT re-add the book to shelf (date_added unchanged)
+    4. Second sync should return the modified book
+
+    This would FAIL without the or_() fix because the query would require
+    BOTH conditions to be true, not just one.
+    """
+    kobo = import_kobo()
+    session, conn, engine = _build_session()
+    old_session = ub.session
+    ub.session = session
+    try:
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        user.kobo_only_shelves_sync = 1
+        session.add(user)
+        session.commit()
+
+        _seed_books(session, 2)
+        books = session.query(db.Books).order_by(db.Books.id).all()
+
+        _create_kobo_shelf_with_books(session, user.id, [b.id for b in books], "Kobo Shelf")
+
+        monkeypatch.setattr(kobo, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo_sync_status, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.shelf_lib, "current_user", user, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kobo_proxy", False, raising=False)
+        monkeypatch.setattr(kobo.config, "config_external_port", 80, raising=False)
+        monkeypatch.setattr(kobo.config, "config_kepubifypath", None, raising=False)
+        monkeypatch.setattr(kobo, "get_epub_layout", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "reconnect_db", lambda *a, **k: None)
+        monkeypatch.setattr(kobo.calibre_db, "common_filters", lambda *a, **k: true())
+
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        original_wsgi_app = app.wsgi_app
+
+        class _WsgiWrapper:
+            def __init__(self, wsgi_app):
+                self._wsgi_app = wsgi_app
+                self.is_proxied = False
+
+            def __call__(self, environ, start_response):
+                return self._wsgi_app(environ, start_response)
+
+        app.wsgi_app = _WsgiWrapper(original_wsgi_app)
+
+        # First sync - should return 2 books
+        with app.test_request_context("/kobo/testtoken/v1/library/sync", base_url="http://example.com"):
+            g.lib_sql = session
+            response1 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload1 = json.loads(response1.get_data(as_text=True))
+        token1 = response1.headers.get("x-kobo-synctoken")
+
+        entitlements1 = [item for item in payload1 if "NewEntitlement" in item or "ChangedEntitlement" in item]
+        assert len(entitlements1) == 2, f"Expected 2 books in first sync, got {len(entitlements1)}"
+
+        # Modify the first book's metadata (update last_modified)
+        # but do NOT change its date_added on the shelf
+        books[0].last_modified = datetime.now(timezone.utc) + timedelta(days=1)
+        session.commit()
+
+        # Second sync - should return only the modified book
+        with app.test_request_context(
+            "/kobo/testtoken/v1/library/sync",
+            base_url="http://example.com",
+            headers={"x-kobo-synctoken": token1},
+        ):
+            g.lib_sql = session
+            response2 = kobo.HandleSyncRequest.__wrapped__()
+
+        payload2 = json.loads(response2.get_data(as_text=True))
+        entitlements2 = [item for item in payload2 if "NewEntitlement" in item or "ChangedEntitlement" in item]
+
+        assert len(entitlements2) == 1, (
+            f"or_() FIX TEST: Expected 1 book (metadata modified) in second sync, got {len(entitlements2)}. "
+            f"This indicates the or_() condition is not working - last_modified alone should trigger sync."
+        )
+        assert _extract_entitlement_ids(entitlements2) == [books[0].uuid], (
+            f"Expected book {books[0].uuid} to be synced via last_modified trigger"
+        )
+    finally:
+        session.close()
+        ub.session = old_session
+        conn.close()
+        engine.dispose()
