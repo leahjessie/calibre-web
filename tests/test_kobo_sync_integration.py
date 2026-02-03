@@ -1126,7 +1126,7 @@ def test_timezone_suffix_in_last_modified_normal_mode(monkeypatch, tmp_path):
         )
 
 
-def test_timezone_suffix_in_last_modified_only_kobo_shelves(monkeypatch, tmp_path):
+def test_timezone_suffix_in_last_modified_only_kobo_shelves(monkeypatch):
     """
     Test timezone suffix handling in only_kobo_shelves mode.
 
@@ -1136,33 +1136,33 @@ def test_timezone_suffix_in_last_modified_only_kobo_shelves(monkeypatch, tmp_pat
     """
     kobo = import_kobo()
 
-    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+    with _kobo_test_session() as session:
         user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
         user.kobo_only_shelves_sync = 1
-        app_session.add(user)
-        app_session.commit()
+        session.add(user)
+        session.commit()
 
         # Create 5 books with explicit +00:00 suffix
-        _seed_books_with_timezone_suffix(calibre_session, 5)
+        _seed_books_with_timezone_suffix(session, 5)
 
         # Get book IDs for shelf creation
-        result = calibre_session.execute(text("SELECT id FROM books"))
+        result = session.execute(text("SELECT id FROM books"))
         book_ids = [row[0] for row in result.fetchall()]
 
-        _create_kobo_shelf_with_books(app_session, user.id, book_ids, "Kobo Shelf")
+        _create_kobo_shelf_with_books(session, user.id, book_ids, "Kobo Shelf")
 
         _setup_kobo_test_environment(monkeypatch, kobo, user)
         app = _create_test_flask_app()
 
         # First sync - should return all 5 books
-        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        response1, payload1 = _make_sync_request(kobo, app, session)
         token1 = response1.headers.get("x-kobo-synctoken")
 
         entitlements1 = [item for item in payload1 if "NewEntitlement" in item or "ChangedEntitlement" in item]
         assert len(entitlements1) == 5, f"Expected 5 books in first sync, got {len(entitlements1)}"
 
         # Second sync - should return empty
-        _, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+        _, payload2 = _make_sync_request(kobo, app, session, token=token1)
         entitlements2 = [item for item in payload2 if "NewEntitlement" in item or "ChangedEntitlement" in item]
 
         assert len(entitlements2) == 0, (
@@ -1172,7 +1172,7 @@ def test_timezone_suffix_in_last_modified_only_kobo_shelves(monkeypatch, tmp_pat
         )
 
 
-def test_only_kobo_shelves_pagination_with_duplicate_timestamps(monkeypatch, tmp_path):
+def test_only_kobo_shelves_pagination_with_duplicate_timestamps(monkeypatch):
     """
     Test that pagination with books_last_id tiebreaker works in only_kobo_shelves mode.
 
@@ -1182,27 +1182,27 @@ def test_only_kobo_shelves_pagination_with_duplicate_timestamps(monkeypatch, tmp
     """
     kobo = import_kobo()
 
-    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+    with _kobo_test_session() as session:
         user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
         user.kobo_only_shelves_sync = 1
-        app_session.add(user)
-        app_session.commit()
+        session.add(user)
+        session.commit()
 
         # Create 150 books with identical timestamps
         sync_limit = 50
         total_books = 150
         same_timestamp = datetime.now(timezone.utc) - timedelta(days=10)
-        _seed_books_with_same_timestamp(calibre_session, total_books, timestamp=same_timestamp)
+        _seed_books_with_same_timestamp(session, total_books, timestamp=same_timestamp)
 
         # Get all book IDs and add them to a kobo shelf
-        books = calibre_session.query(db.Books).all()
-        _create_kobo_shelf_with_books(app_session, user.id, [b.id for b in books], "Kobo Shelf")
+        books = session.query(db.Books).all()
+        _create_kobo_shelf_with_books(session, user.id, [b.id for b in books], "Kobo Shelf")
 
         _setup_kobo_test_environment(monkeypatch, kobo, user, sync_limit=sync_limit)
         app = _create_test_flask_app()
 
         # First sync: should return first 50 books
-        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        response1, payload1 = _make_sync_request(kobo, app, session)
         token1 = response1.headers.get("x-kobo-synctoken")
         ids1 = _collect_entitlement_ids(payload1)
 
@@ -1212,7 +1212,7 @@ def test_only_kobo_shelves_pagination_with_duplicate_timestamps(monkeypatch, tmp
         )
 
         # Second sync: should return next 50 books, NOT duplicates
-        response2, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+        response2, payload2 = _make_sync_request(kobo, app, session, token=token1)
         token2 = response2.headers.get("x-kobo-synctoken")
         ids2 = _collect_entitlement_ids(payload2)
 
@@ -1226,7 +1226,7 @@ def test_only_kobo_shelves_pagination_with_duplicate_timestamps(monkeypatch, tmp
         )
 
         # Third sync: should return remaining 50 books
-        response3, payload3 = _make_sync_request(kobo, app, calibre_session, token=token2)
+        response3, payload3 = _make_sync_request(kobo, app, session, token=token2)
         token3 = response3.headers.get("x-kobo-synctoken")
         ids3 = _collect_entitlement_ids(payload3)
 
@@ -1239,7 +1239,7 @@ def test_only_kobo_shelves_pagination_with_duplicate_timestamps(monkeypatch, tmp
         )
 
         # Fourth sync: should return empty
-        _, payload4 = _make_sync_request(kobo, app, calibre_session, token=token3)
+        _, payload4 = _make_sync_request(kobo, app, session, token=token3)
         entitlements4 = [item for item in payload4 if "NewEntitlement" in item or "ChangedEntitlement" in item]
 
         assert len(entitlements4) == 0, (
@@ -1253,7 +1253,7 @@ def test_only_kobo_shelves_pagination_with_duplicate_timestamps(monkeypatch, tmp
         )
 
 
-def test_only_kobo_shelves_modified_book_resync_with_duplicate_timestamps(monkeypatch, tmp_path):
+def test_only_kobo_shelves_modified_book_resync_with_duplicate_timestamps(monkeypatch):
     """
     Test that a modified book re-syncs correctly in only_kobo_shelves mode with duplicate timestamps.
 
@@ -1263,29 +1263,29 @@ def test_only_kobo_shelves_modified_book_resync_with_duplicate_timestamps(monkey
     """
     kobo = import_kobo()
 
-    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+    with _kobo_test_session() as session:
         user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
         user.kobo_only_shelves_sync = 1
-        app_session.add(user)
-        app_session.commit()
+        session.add(user)
+        session.commit()
 
         # Create 100 books with identical timestamps
         sync_limit = 50
         total_books = 100
         same_timestamp = datetime.now(timezone.utc) - timedelta(days=10)
-        _seed_books_with_same_timestamp(calibre_session, total_books, timestamp=same_timestamp)
+        _seed_books_with_same_timestamp(session, total_books, timestamp=same_timestamp)
 
         # Add all books to a kobo shelf
-        books = calibre_session.query(db.Books).order_by(db.Books.id).all()
-        _create_kobo_shelf_with_books(app_session, user.id, [b.id for b in books], "Kobo Shelf")
+        books = session.query(db.Books).order_by(db.Books.id).all()
+        _create_kobo_shelf_with_books(session, user.id, [b.id for b in books], "Kobo Shelf")
 
         _setup_kobo_test_environment(monkeypatch, kobo, user, sync_limit=sync_limit)
         app = _create_test_flask_app()
 
         # Sync all books (2 pages)
-        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        response1, payload1 = _make_sync_request(kobo, app, session)
         token1 = response1.headers.get("x-kobo-synctoken")
-        response2, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+        response2, payload2 = _make_sync_request(kobo, app, session, token=token1)
         token2 = response2.headers.get("x-kobo-synctoken")
 
         # Verify all books synced
@@ -1296,10 +1296,10 @@ def test_only_kobo_shelves_modified_book_resync_with_duplicate_timestamps(monkey
         # Now modify one book's metadata (book #25)
         modified_book = books[24]  # Book #25 (0-indexed)
         modified_book.last_modified = datetime.now(timezone.utc) + timedelta(days=1)
-        calibre_session.commit()
+        session.commit()
 
         # Next sync should return ONLY the modified book
-        _, payload3 = _make_sync_request(kobo, app, calibre_session, token=token2)
+        _, payload3 = _make_sync_request(kobo, app, session, token=token2)
         ids3 = _extract_entitlement_ids(payload3)
 
         assert len(payload3) == 1, (
