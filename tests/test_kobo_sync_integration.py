@@ -1044,3 +1044,268 @@ def test_mixed_timestamps_pagination(monkeypatch, tmp_path):
                    _collect_entitlement_ids(payload3) |
                    _collect_entitlement_ids(payload4))
         assert len(all_ids) == 200, f"Expected 200 unique books synced, got {len(all_ids)}"
+
+
+def _seed_books_with_timezone_suffix(session, count, timestamp=None):
+    """Seed books with explicit +00:00 timezone suffix in last_modified.
+
+    This tests the func.replace fix that strips timezone suffixes for comparison.
+    Uses raw SQL to ensure the +00:00 suffix is stored literally in SQLite.
+    """
+    if timestamp is None:
+        timestamp = datetime.now(timezone.utc) - timedelta(days=10)
+
+    # Format timestamp with explicit +00:00 suffix
+    ts_str = timestamp.strftime('%Y-%m-%d %H:%M:%S+00:00')
+
+    for idx in range(count):
+        book_uuid = str(uuid4())
+
+        session.execute(text("""
+            INSERT INTO books (title, sort, author_sort, timestamp, pubdate,
+                             series_index, last_modified, path, has_cover, uuid)
+            VALUES (:title, :sort, '', :timestamp, :pubdate,
+                   '1.0', :last_modified, :path, 0, :uuid)
+        """), {
+            "title": f"Book {idx + 1}",
+            "sort": f"Book {idx + 1}",
+            "timestamp": ts_str,
+            "pubdate": "2024-01-01",
+            "last_modified": ts_str,  # With +00:00 suffix
+            "path": f"book_{idx + 1}",
+            "uuid": book_uuid,
+        })
+
+        # Get the book ID that was just inserted
+        result = session.execute(text("SELECT last_insert_rowid()"))
+        book_id = result.fetchone()[0]
+
+        session.execute(text("""
+            INSERT INTO data (book, format, uncompressed_size, name)
+            VALUES (:book_id, 'EPUB', 123, :name)
+        """), {"book_id": book_id, "name": f"book_{idx + 1}.epub"})
+
+    session.commit()
+
+
+def test_timezone_suffix_in_last_modified_normal_mode(monkeypatch, tmp_path):
+    """
+    Test that books with explicit +00:00 timezone suffix in last_modified sync correctly.
+
+    This tests the func.replace(db.Books.last_modified, '+00:00', '') fix in kobo.py.
+    Without the fix, timestamps like '2024-01-15T10:30:00+00:00' would not compare
+    correctly with sync token values, causing books to be re-synced infinitely.
+    """
+    kobo = import_kobo()
+
+    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        app_session.add(user)
+        app_session.commit()
+
+        # Create 5 books with explicit +00:00 suffix in last_modified
+        _seed_books_with_timezone_suffix(calibre_session, 5)
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user)
+        app = _create_test_flask_app()
+
+        # First sync - should return all 5 books
+        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        token1 = response1.headers.get("x-kobo-synctoken")
+
+        assert len(payload1) == 5, f"Expected 5 books in first sync, got {len(payload1)}"
+
+        # Second sync with token - should return empty (no books modified)
+        # This would FAIL without the +00:00 stripping fix
+        _, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+
+        assert payload2 == [], (
+            "TIMEZONE BUG: Expected 0 books in second sync (books already synced), "
+            f"got {len(payload2)}. This indicates the func.replace('+00:00', '') fix "
+            "is not working - timestamps with timezone suffix are not comparing correctly."
+        )
+
+
+def test_timezone_suffix_in_last_modified_only_kobo_shelves(monkeypatch, tmp_path):
+    """
+    Test timezone suffix handling in only_kobo_shelves mode.
+
+    Same as test_timezone_suffix_in_last_modified_normal_mode but for the
+    kobo_only_shelves_sync=1 code path, which has its own set of queries
+    that need the func.replace fix.
+    """
+    kobo = import_kobo()
+
+    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        user.kobo_only_shelves_sync = 1
+        app_session.add(user)
+        app_session.commit()
+
+        # Create 5 books with explicit +00:00 suffix
+        _seed_books_with_timezone_suffix(calibre_session, 5)
+
+        # Get book IDs for shelf creation
+        result = calibre_session.execute(text("SELECT id FROM books"))
+        book_ids = [row[0] for row in result.fetchall()]
+
+        _create_kobo_shelf_with_books(app_session, user.id, book_ids, "Kobo Shelf")
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user)
+        app = _create_test_flask_app()
+
+        # First sync - should return all 5 books
+        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        token1 = response1.headers.get("x-kobo-synctoken")
+
+        entitlements1 = [item for item in payload1 if "NewEntitlement" in item or "ChangedEntitlement" in item]
+        assert len(entitlements1) == 5, f"Expected 5 books in first sync, got {len(entitlements1)}"
+
+        # Second sync - should return empty
+        _, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+        entitlements2 = [item for item in payload2 if "NewEntitlement" in item or "ChangedEntitlement" in item]
+
+        assert len(entitlements2) == 0, (
+            "TIMEZONE BUG (only_kobo_shelves): Expected 0 books in second sync, "
+            f"got {len(entitlements2)}. The func.replace('+00:00', '') fix may not be "
+            "working in the only_kobo_shelves code path."
+        )
+
+
+def test_only_kobo_shelves_pagination_with_duplicate_timestamps(monkeypatch, tmp_path):
+    """
+    Test that pagination with books_last_id tiebreaker works in only_kobo_shelves mode.
+
+    This is the only_kobo_shelves equivalent of test_pagination_with_duplicate_timestamps.
+    It verifies that when all books have the same last_modified timestamp, pagination
+    still works correctly using the book ID tiebreaker.
+    """
+    kobo = import_kobo()
+
+    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        user.kobo_only_shelves_sync = 1
+        app_session.add(user)
+        app_session.commit()
+
+        # Create 150 books with identical timestamps
+        sync_limit = 50
+        total_books = 150
+        same_timestamp = datetime.now(timezone.utc) - timedelta(days=10)
+        _seed_books_with_same_timestamp(calibre_session, total_books, timestamp=same_timestamp)
+
+        # Get all book IDs and add them to a kobo shelf
+        books = calibre_session.query(db.Books).all()
+        _create_kobo_shelf_with_books(app_session, user.id, [b.id for b in books], "Kobo Shelf")
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user, sync_limit=sync_limit)
+        app = _create_test_flask_app()
+
+        # First sync: should return first 50 books
+        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        token1 = response1.headers.get("x-kobo-synctoken")
+        ids1 = _collect_entitlement_ids(payload1)
+
+        assert len(ids1) == sync_limit, f"Expected {sync_limit} books in first sync, got {len(ids1)}"
+        assert response1.headers.get("x-kobo-sync") == "continue", (
+            "Expected continuation header when more books remain"
+        )
+
+        # Second sync: should return next 50 books, NOT duplicates
+        response2, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+        token2 = response2.headers.get("x-kobo-synctoken")
+        ids2 = _collect_entitlement_ids(payload2)
+
+        assert len(ids2) == sync_limit, f"Expected {sync_limit} books in second sync, got {len(ids2)}"
+        assert response2.headers.get("x-kobo-sync") == "continue", (
+            "Expected continuation header when more books remain"
+        )
+        assert ids1.isdisjoint(ids2), (
+            "PAGINATION BUG (only_kobo_shelves): Second sync returned duplicate books! "
+            "This indicates the books_last_id tiebreaker is not working in only_kobo_shelves mode."
+        )
+
+        # Third sync: should return remaining 50 books
+        response3, payload3 = _make_sync_request(kobo, app, calibre_session, token=token2)
+        token3 = response3.headers.get("x-kobo-synctoken")
+        ids3 = _collect_entitlement_ids(payload3)
+
+        assert len(ids3) == sync_limit, f"Expected {sync_limit} books in third sync, got {len(ids3)}"
+        assert response3.headers.get("x-kobo-sync") is None, (
+            "Expected no continuation header on final page"
+        )
+        assert ids1.isdisjoint(ids3) and ids2.isdisjoint(ids3), (
+            "Third sync returned duplicate books"
+        )
+
+        # Fourth sync: should return empty
+        _, payload4 = _make_sync_request(kobo, app, calibre_session, token=token3)
+        entitlements4 = [item for item in payload4 if "NewEntitlement" in item or "ChangedEntitlement" in item]
+
+        assert len(entitlements4) == 0, (
+            "Expected empty payload after all books synced with identical timestamps"
+        )
+
+        # Verify all books synced exactly once
+        all_ids = ids1 | ids2 | ids3
+        assert len(all_ids) == total_books, (
+            f"Expected {total_books} unique books synced, got {len(all_ids)}"
+        )
+
+
+def test_only_kobo_shelves_modified_book_resync_with_duplicate_timestamps(monkeypatch, tmp_path):
+    """
+    Test that a modified book re-syncs correctly in only_kobo_shelves mode with duplicate timestamps.
+
+    This is the only_kobo_shelves equivalent of test_modified_book_resync_with_duplicate_timestamps.
+    It verifies that after syncing books with identical timestamps, modifying one book's
+    last_modified causes it to be re-synced correctly.
+    """
+    kobo = import_kobo()
+
+    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        user.kobo_only_shelves_sync = 1
+        app_session.add(user)
+        app_session.commit()
+
+        # Create 100 books with identical timestamps
+        sync_limit = 50
+        total_books = 100
+        same_timestamp = datetime.now(timezone.utc) - timedelta(days=10)
+        _seed_books_with_same_timestamp(calibre_session, total_books, timestamp=same_timestamp)
+
+        # Add all books to a kobo shelf
+        books = calibre_session.query(db.Books).order_by(db.Books.id).all()
+        _create_kobo_shelf_with_books(app_session, user.id, [b.id for b in books], "Kobo Shelf")
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user, sync_limit=sync_limit)
+        app = _create_test_flask_app()
+
+        # Sync all books (2 pages)
+        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        token1 = response1.headers.get("x-kobo-synctoken")
+        response2, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+        token2 = response2.headers.get("x-kobo-synctoken")
+
+        # Verify all books synced
+        ids1 = _collect_entitlement_ids(payload1)
+        ids2 = _collect_entitlement_ids(payload2)
+        assert len(ids1) + len(ids2) == total_books
+
+        # Now modify one book's metadata (book #25)
+        modified_book = books[24]  # Book #25 (0-indexed)
+        modified_book.last_modified = datetime.now(timezone.utc) + timedelta(days=1)
+        calibre_session.commit()
+
+        # Next sync should return ONLY the modified book
+        _, payload3 = _make_sync_request(kobo, app, calibre_session, token=token2)
+        ids3 = _extract_entitlement_ids(payload3)
+
+        assert len(payload3) == 1, (
+            f"Expected 1 modified book in sync, got {len(payload3)}. "
+            "The book ID filter should not prevent re-syncing modified books in only_kobo_shelves mode."
+        )
+        assert ids3[0] == modified_book.uuid, (
+            f"Expected modified book {modified_book.uuid} to be synced, got {ids3[0] if ids3 else 'none'}"
+        )
