@@ -185,6 +185,9 @@ def HandleSyncRequest():
         sync_token.books_last_modified, sync_token.books_last_id))
     log.debug("Kobo Sync: only_kobo_shelves mode: {}".format(only_kobo_shelves))
 
+    # Calibre stores timestamps with +00:00 suffix, normalize for comparison with sync token
+    book_modified_col = func.replace(db.Books.last_modified, '+00:00', '')
+
     if only_kobo_shelves:
         changed_entries = calibre_db.session.query(db.Books,
                                                    ub.ArchivedBook.last_modified,
@@ -199,15 +202,15 @@ def HandleSyncRequest():
                            .filter(ub.Shelf.kobo_sync)
                            .filter(or_(
                                 func.datetime(ub.BookShelf.date_added) > sync_token.tags_last_modified,
-                                func.replace(db.Books.last_modified, '+00:00', '') > sync_token.books_last_modified,
+                                book_modified_col > sync_token.books_last_modified,
                                 and_(
-                                    func.replace(db.Books.last_modified, '+00:00', '') == sync_token.books_last_modified,
+                                    book_modified_col == sync_token.books_last_modified,
                                     db.Books.id > sync_token.books_last_id
                                 )
                            ))
                            .filter(db.Data.format.in_(KOBO_FORMATS))
                            .filter(calibre_db.common_filters(allow_show_archived=True))
-                           .order_by(func.replace(db.Books.last_modified, '+00:00', ''))
+                           .order_by(book_modified_col)
                            .order_by(db.Books.id)
                            .distinct())
     else:
@@ -218,15 +221,15 @@ def HandleSyncRequest():
                            .join(db.Data).outerjoin(ub.ArchivedBook, and_(db.Books.id == ub.ArchivedBook.book_id,
                                                                           ub.ArchivedBook.user_id == current_user.id))
                            .filter(or_(
-                               func.replace(db.Books.last_modified, '+00:00', '') > sync_token.books_last_modified,
+                               book_modified_col > sync_token.books_last_modified,
                                and_(
-                                   func.replace(db.Books.last_modified, '+00:00', '') == sync_token.books_last_modified,
+                                   book_modified_col == sync_token.books_last_modified,
                                    db.Books.id > sync_token.books_last_id
                                )
                            ))
                            .filter(calibre_db.common_filters(allow_show_archived=True))
                            .filter(db.Data.format.in_(KOBO_FORMATS))
-                           .order_by(func.replace(db.Books.last_modified, '+00:00', ''))
+                           .order_by(book_modified_col)
                            .order_by(db.Books.id))
     log.debug("Kobo Sync: changed entries: {}".format(changed_entries.count()))
     # Debug: Print the actual SQL query
