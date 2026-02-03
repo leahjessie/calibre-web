@@ -145,19 +145,12 @@ def HandleSyncRequest():
     if not current_user.role_download():
         log.info("Users need download permissions for syncing library to Kobo reader")
         return abort(403)
-
     sync_token = SyncToken.SyncToken.from_headers(request.headers)
     log.info("Kobo library sync request received")
     log.debug("SyncToken: {}".format(sync_token))
     log.debug("Download link format {}".format(get_download_url_for_book('[bookid]', '[bookformat]')))
     if not current_app.wsgi_app.is_proxied:
         log.debug('Kobo: Received unproxied request, changed request port to external server port')
-
-    # Produce an equivalent curl command to assist with debugging
-    #curl = f"curl -X{request.method} '{request.url}'"
-    #for key, value in request.headers.items():
-    #    curl += f" -H'{key}: {value}'"
-    #log.debug(f"curl: {curl}")
 
     # if no books synced don't respect sync_token
     if not ub.session.query(ub.KoboSyncedBooks).filter(ub.KoboSyncedBooks.user_id == current_user.id).count():
@@ -232,24 +225,11 @@ def HandleSyncRequest():
                            .order_by(book_modified_col)
                            .order_by(db.Books.id))
     log.debug("Kobo Sync: changed entries: {}".format(changed_entries.count()))
-    # Debug: Print the actual SQL query
-    try:
-        from sqlalchemy.dialects import sqlite
-        sql = str(changed_entries.statement.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
-        log.debug("Kobo Sync: SQL query (full): {}".format(sql))
-    except Exception as e:
-        log.debug("Kobo Sync: Could not compile SQL: {}".format(e))
 
     reading_states_in_new_entitlements = []
     books = changed_entries.limit(SYNC_ITEM_LIMIT)
     books_list = books.all()
-    log.debug("Kobo Sync: selected to sync: {}".format(len(books_list)))
-    if books_list:
-        book_ids = [b.Books.id for b in books_list[:5]]  # First 5 book IDs
-        book_timestamps = [(b.Books.id, str(b.Books.last_modified)) for b in books_list[:5]]
-        log.debug("Kobo Sync: first 5 book IDs: {}".format(book_ids))
-        log.debug("Kobo Sync: first 5 book timestamps: {}".format(book_timestamps))
-        log.debug("Kobo Sync: sync_token.books_last_modified: {}".format(sync_token.books_last_modified))
+    log.debug("Kobo Sync: Books to sync: {}".format(len(books_list)))
     for book in books_list:
         formats = [data.format for data in book.Books.data]
         if 'KEPUB' not in formats and config.config_kepubifypath and 'EPUB' in formats:
@@ -313,7 +293,6 @@ def HandleSyncRequest():
     # generate reading state data
     changed_reading_states = ub.session.query(ub.KoboReadingState)
 
-    log.debug("Kobo Sync: rstate last modified: {}".format(sync_token.reading_state_last_modified))
     if only_kobo_shelves:
         changed_reading_states = changed_reading_states.join(ub.BookShelf,
                                                              ub.KoboReadingState.book_id == ub.BookShelf.book_id)\
