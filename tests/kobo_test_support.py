@@ -21,12 +21,13 @@ def _get_datetime_from_json(json_object, field_name):
 
 class StubSyncToken:
     SYNC_TOKEN_HEADER = "x-kobo-synctoken"
-    VERSION = "1-1-0"
+    VERSION = "1-2-0"
 
     def __init__(self):
         self.raw_kobo_store_token = ""
         self.books_last_created = datetime.min
         self.books_last_modified = datetime.min
+        self.books_last_id = -1
         self.archive_last_modified = datetime.min
         self.reading_state_last_modified = datetime.min
         self.tags_last_modified = datetime.min
@@ -47,6 +48,7 @@ class StubSyncToken:
             token.raw_kobo_store_token = data_json.get("raw_kobo_store_token", "")
             token.books_last_created = _get_datetime_from_json(data_json, "books_last_created")
             token.books_last_modified = _get_datetime_from_json(data_json, "books_last_modified")
+            token.books_last_id = data_json.get("books_last_id", -1)
             token.archive_last_modified = _get_datetime_from_json(data_json, "archive_last_modified")
             token.reading_state_last_modified = _get_datetime_from_json(data_json, "reading_state_last_modified")
             token.tags_last_modified = _get_datetime_from_json(data_json, "tags_last_modified")
@@ -61,6 +63,7 @@ class StubSyncToken:
                 "raw_kobo_store_token": self.raw_kobo_store_token,
                 "books_last_created": _to_epoch_timestamp(self.books_last_created),
                 "books_last_modified": _to_epoch_timestamp(self.books_last_modified),
+                "books_last_id": self.books_last_id,
                 "archive_last_modified": _to_epoch_timestamp(self.archive_last_modified),
                 "reading_state_last_modified": _to_epoch_timestamp(self.reading_state_last_modified),
                 "tags_last_modified": _to_epoch_timestamp(self.tags_last_modified),

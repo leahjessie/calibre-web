@@ -798,3 +798,249 @@ def _extract_entitlement_ids(payload):
 
 def _collect_entitlement_ids(payload):
     return set(_extract_entitlement_ids(payload))
+
+def _seed_books_with_same_timestamp(session, count, timestamp=None):
+    """Seed books where ALL books have the SAME last_modified timestamp.
+
+    This reproduces the bug where bulk imports give all books identical timestamps,
+    causing pagination to fail without the books_last_id tiebreaker.
+    """
+    if timestamp is None:
+        timestamp = datetime.now(timezone.utc)
+
+    for idx in range(count):
+        title = f"Book {idx + 1}"
+        book = db.Books(
+            title=title,
+            sort=title,
+            author_sort="",
+            timestamp=timestamp,
+            pubdate=db.Books.DEFAULT_PUBDATE,
+            series_index="1.0",
+            last_modified=timestamp,  # ALL books get the SAME timestamp
+            path=f"book_{idx + 1}",
+            has_cover=0,
+            authors=[],
+            tags=[],
+            languages=[],
+        )
+        book.uuid = str(uuid4())
+        session.add(book)
+        session.flush()
+        session.add(
+            db.Data(
+                book=book.id,
+                book_format="EPUB",
+                uncompressed_size=123,
+                name=f"book_{idx + 1}.epub",
+            )
+        )
+    session.commit()
+
+
+def test_pagination_with_duplicate_timestamps(monkeypatch, tmp_path):
+    """
+    Test that pagination works correctly when all books have identical timestamps.
+
+    Without the books_last_id tiebreaker fix, this would cause an infinite loop:
+    - First sync returns books 1-50 (all with timestamp T)
+    - Token updated to books_last_modified=T
+    - Second sync: filter (last_modified > T) excludes remaining books with timestamp T
+    - Result: Same 50 books returned repeatedly → infinite loop
+
+    With the fix using books_last_id:
+    - First sync returns books 1-50, sets books_last_id=50
+    - Second sync: filter (last_modified > T OR (last_modified == T AND id > 50))
+    - Returns books 51-100 correctly
+    """
+    kobo = import_kobo()
+
+    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        app_session.add(user)
+        app_session.commit()
+
+        # Create 150 books, ALL with the same last_modified timestamp
+        sync_limit = 50
+        total_books = 150
+        same_timestamp = datetime.now(timezone.utc) - timedelta(days=10)
+        _seed_books_with_same_timestamp(calibre_session, total_books, timestamp=same_timestamp)
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user, sync_limit=sync_limit)
+        app = _create_test_flask_app()
+
+        # First sync: should return first 50 books
+        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        token1 = response1.headers.get("x-kobo-synctoken")
+        ids1 = _collect_entitlement_ids(payload1)
+
+        assert len(payload1) == sync_limit, f"Expected {sync_limit} books in first sync, got {len(payload1)}"
+        assert response1.headers.get("x-kobo-sync") == "continue", (
+            "Expected continuation header when more books remain"
+        )
+
+        # Second sync: should return next 50 books (51-100), NOT the same books
+        response2, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+        token2 = response2.headers.get("x-kobo-synctoken")
+        ids2 = _collect_entitlement_ids(payload2)
+
+        assert len(payload2) == sync_limit, f"Expected {sync_limit} books in second sync, got {len(payload2)}"
+        assert response2.headers.get("x-kobo-sync") == "continue", (
+            "Expected continuation header when more books remain"
+        )
+        assert ids1.isdisjoint(ids2), (
+            "PAGINATION BUG: Second sync returned duplicate books! "
+            "This indicates the books_last_id tiebreaker is not working."
+        )
+
+        # Third sync: should return remaining 50 books (101-150)
+        response3, payload3 = _make_sync_request(kobo, app, calibre_session, token=token2)
+        token3 = response3.headers.get("x-kobo-synctoken")
+        ids3 = _collect_entitlement_ids(payload3)
+
+        assert len(payload3) == sync_limit, f"Expected {sync_limit} books in third sync, got {len(payload3)}"
+        assert response3.headers.get("x-kobo-sync") is None, (
+            "Expected no continuation header on final page"
+        )
+        assert ids1.isdisjoint(ids3) and ids2.isdisjoint(ids3), (
+            "Third sync returned duplicate books"
+        )
+
+        # Fourth sync: should return empty (all books synced)
+        response4, payload4 = _make_sync_request(kobo, app, calibre_session, token=token3)
+
+        assert payload4 == [], (
+            "Expected empty payload after all books synced with identical timestamps"
+        )
+
+        # Verify all 150 books were synced exactly once
+        all_ids = ids1 | ids2 | ids3
+        assert len(all_ids) == total_books, (
+            f"Expected {total_books} unique books synced, got {len(all_ids)}"
+        )
+
+
+def test_modified_book_resync_with_duplicate_timestamps(monkeypatch, tmp_path):
+    """
+    Test that a modified book is re-synced correctly even when timestamps collide.
+
+    Scenario:
+    1. Sync 100 books (all with timestamp T)
+    2. Modify book #25's content (changes last_modified to T2)
+    3. Next sync should return ONLY book #25 (because last_modified changed)
+    4. Verify the book ID filter doesn't prevent re-syncing modified books
+    """
+    kobo = import_kobo()
+
+    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        app_session.add(user)
+        app_session.commit()
+
+        # Create 100 books with same timestamp
+        sync_limit = 50
+        total_books = 100
+        same_timestamp = datetime.now(timezone.utc) - timedelta(days=10)
+        _seed_books_with_same_timestamp(calibre_session, total_books, timestamp=same_timestamp)
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user, sync_limit=sync_limit)
+        app = _create_test_flask_app()
+
+        # Sync all books (2 pages)
+        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        token1 = response1.headers.get("x-kobo-synctoken")
+        response2, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+        token2 = response2.headers.get("x-kobo-synctoken")
+
+        # Verify all books synced
+        assert len(payload1) + len(payload2) == total_books
+
+        # Now modify one book's metadata (book #25, which was in the first batch)
+        books = calibre_session.query(db.Books).order_by(db.Books.id).all()
+        modified_book = books[24]  # Book #25 (0-indexed)
+        modified_book.last_modified = datetime.now(timezone.utc) + timedelta(days=1)
+        calibre_session.commit()
+
+        # Next sync should return ONLY the modified book
+        response3, payload3 = _make_sync_request(kobo, app, calibre_session, token=token2)
+        ids3 = _extract_entitlement_ids(payload3)
+
+        assert len(payload3) == 1, (
+            f"Expected 1 modified book in sync, got {len(payload3)}. "
+            "The book ID filter should not prevent re-syncing modified books."
+        )
+        assert ids3[0] == modified_book.uuid, (
+            f"Expected modified book {modified_book.uuid} to be synced, got {ids3[0] if ids3 else 'none'}"
+        )
+
+
+def test_mixed_timestamps_pagination(monkeypatch, tmp_path):
+    """
+    Test pagination across different timestamp groups.
+
+    Scenario: 50 books @ T1, 100 books @ T2, 50 books @ T3
+    With sync_limit=60, verify:
+    - Page 1: 50 books @ T1 + 10 books @ T2
+    - Page 2: 90 books @ T2
+    - Page 3: 50 books @ T3
+    - Page 4: empty
+
+    This tests that the book ID tiebreaker works correctly when crossing timestamp boundaries.
+    """
+    kobo = import_kobo()
+
+    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        app_session.add(user)
+        app_session.commit()
+
+        sync_limit = 60
+        base_time = datetime.now(timezone.utc) - timedelta(days=30)
+
+        # Seed books with 3 different timestamps
+        _seed_books_with_same_timestamp(calibre_session, 50, timestamp=base_time)  # Books 1-50 @ T1
+        _seed_books_with_same_timestamp(calibre_session, 100, timestamp=base_time + timedelta(days=1))  # Books 51-150 @ T2
+        _seed_books_with_same_timestamp(calibre_session, 50, timestamp=base_time + timedelta(days=2))  # Books 151-200 @ T3
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user, sync_limit=sync_limit)
+        app = _create_test_flask_app()
+
+        # Page 1: Should get 50 @ T1 + 10 @ T2 = 60 books
+        response1, payload1 = _make_sync_request(kobo, app, calibre_session)
+        token1 = response1.headers.get("x-kobo-synctoken")
+
+        assert len(payload1) == sync_limit, f"Expected {sync_limit} books in page 1, got {len(payload1)}"
+        assert response1.headers.get("x-kobo-sync") == "continue"
+
+        # Page 2: Should get remaining 90 @ T2, but limited to 60
+        response2, payload2 = _make_sync_request(kobo, app, calibre_session, token=token1)
+        token2 = response2.headers.get("x-kobo-synctoken")
+
+        assert len(payload2) == sync_limit, f"Expected {sync_limit} books in page 2, got {len(payload2)}"
+        assert response2.headers.get("x-kobo-sync") == "continue"
+
+        # Page 3: Should get remaining 30 @ T2 + 30 @ T3 = 60 books
+        response3, payload3 = _make_sync_request(kobo, app, calibre_session, token=token2)
+        token3 = response3.headers.get("x-kobo-synctoken")
+
+        assert len(payload3) == sync_limit, f"Expected {sync_limit} books in page 3, got {len(payload3)}"
+        assert response3.headers.get("x-kobo-sync") is None or response3.headers.get("x-kobo-sync") == "continue"
+
+        # Page 4: Should get remaining 20 @ T3
+        response4, payload4 = _make_sync_request(kobo, app, calibre_session, token=token3)
+        token4 = response4.headers.get("x-kobo-synctoken")
+
+        assert len(payload4) == 20, f"Expected 20 books in page 4, got {len(payload4)}"
+        assert response4.headers.get("x-kobo-sync") is None
+
+        # Page 5: Should be empty
+        response5, payload5 = _make_sync_request(kobo, app, calibre_session, token=token4)
+
+        assert payload5 == [], "Expected empty payload after all books synced"
+
+        # Verify all books synced exactly once
+        all_ids = (_collect_entitlement_ids(payload1) |
+                   _collect_entitlement_ids(payload2) |
+                   _collect_entitlement_ids(payload3) |
+                   _collect_entitlement_ids(payload4))
+        assert len(all_ids) == 200, f"Expected 200 unique books synced, got {len(all_ids)}"
