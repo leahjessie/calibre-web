@@ -183,6 +183,7 @@ def HandleSyncRequest():
 
     log.debug("Kobo Sync: books last modified: {}, books_last_id: {}".format(
         sync_token.books_last_modified, sync_token.books_last_id))
+    log.debug("Kobo Sync: only_kobo_shelves mode: {}".format(only_kobo_shelves))
 
     if only_kobo_shelves:
         changed_entries = calibre_db.session.query(db.Books,
@@ -198,15 +199,15 @@ def HandleSyncRequest():
                            .filter(ub.Shelf.kobo_sync)
                            .filter(or_(
                                 func.datetime(ub.BookShelf.date_added) > sync_token.tags_last_modified,
-                                db.Books.last_modified > sync_token.books_last_modified,
+                                func.replace(db.Books.last_modified, '+00:00', '') > sync_token.books_last_modified,
                                 and_(
-                                    db.Books.last_modified == sync_token.books_last_modified,
+                                    func.replace(db.Books.last_modified, '+00:00', '') == sync_token.books_last_modified,
                                     db.Books.id > sync_token.books_last_id
                                 )
                            ))
                            .filter(db.Data.format.in_(KOBO_FORMATS))
                            .filter(calibre_db.common_filters(allow_show_archived=True))
-                           .order_by(db.Books.last_modified)
+                           .order_by(func.replace(db.Books.last_modified, '+00:00', ''))
                            .order_by(db.Books.id)
                            .distinct())
     else:
@@ -217,22 +218,36 @@ def HandleSyncRequest():
                            .join(db.Data).outerjoin(ub.ArchivedBook, and_(db.Books.id == ub.ArchivedBook.book_id,
                                                                           ub.ArchivedBook.user_id == current_user.id))
                            .filter(or_(
-                               db.Books.last_modified > sync_token.books_last_modified,
+                               func.replace(db.Books.last_modified, '+00:00', '') > sync_token.books_last_modified,
                                and_(
-                                   db.Books.last_modified == sync_token.books_last_modified,
+                                   func.replace(db.Books.last_modified, '+00:00', '') == sync_token.books_last_modified,
                                    db.Books.id > sync_token.books_last_id
                                )
                            ))
                            .filter(calibre_db.common_filters(allow_show_archived=True))
                            .filter(db.Data.format.in_(KOBO_FORMATS))
-                           .order_by(db.Books.last_modified)
+                           .order_by(func.replace(db.Books.last_modified, '+00:00', ''))
                            .order_by(db.Books.id))
     log.debug("Kobo Sync: changed entries: {}".format(changed_entries.count()))
+    # Debug: Print the actual SQL query
+    try:
+        from sqlalchemy.dialects import sqlite
+        sql = str(changed_entries.statement.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True}))
+        log.debug("Kobo Sync: SQL query (full): {}".format(sql))
+    except Exception as e:
+        log.debug("Kobo Sync: Could not compile SQL: {}".format(e))
 
     reading_states_in_new_entitlements = []
     books = changed_entries.limit(SYNC_ITEM_LIMIT)
-    log.debug("Kobo Sync: selected to sync: {}".format(len(books.all())))
-    for book in books:
+    books_list = books.all()
+    log.debug("Kobo Sync: selected to sync: {}".format(len(books_list)))
+    if books_list:
+        book_ids = [b.Books.id for b in books_list[:5]]  # First 5 book IDs
+        book_timestamps = [(b.Books.id, str(b.Books.last_modified)) for b in books_list[:5]]
+        log.debug("Kobo Sync: first 5 book IDs: {}".format(book_ids))
+        log.debug("Kobo Sync: first 5 book timestamps: {}".format(book_timestamps))
+        log.debug("Kobo Sync: sync_token.books_last_modified: {}".format(sync_token.books_last_modified))
+    for book in books_list:
         formats = [data.format for data in book.Books.data]
         if 'KEPUB' not in formats and config.config_kepubifypath and 'EPUB' in formats:
             helper.convert_book_format(book.Books.id, config.get_book_path(), 'EPUB', 'KEPUB', current_user.name)
