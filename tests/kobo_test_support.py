@@ -82,6 +82,7 @@ def install_stub_modules():
     if "cps.services.SyncToken" not in sys.modules:
         sync_token_stub = types.ModuleType("cps.services.SyncToken")
         sync_token_stub.SyncToken = StubSyncToken
+        sync_token_stub.b64encode_json = lambda json_data: b64encode(json.dumps(json_data).encode()).decode("utf-8")
         sys.modules["cps.services.SyncToken"] = sync_token_stub
 
 
