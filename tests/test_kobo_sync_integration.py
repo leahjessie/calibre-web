@@ -845,6 +845,143 @@ def test_timezone_suffix_in_last_modified_only_kobo_shelves(monkeypatch):
 
 
 # =============================================================================
+# BACKWARDS COMPATIBILITY TESTS
+# Ensure old sync tokens (missing new fields) parse correctly and sync works.
+# =============================================================================
+
+def test_sync_token_backwards_compatibility_missing_books_last_id():
+    """Old sync tokens without books_last_id should parse correctly (default to -1)."""
+    from cps.services.SyncToken import SyncToken, b64encode_json
+
+    # Create old-format token (pre-1-2-0, missing books_last_id)
+    old_token = b64encode_json({
+        "version": "1-1-0",
+        "data": {
+            "raw_kobo_store_token": "",
+            "books_last_modified": 1700000000,
+            "books_last_created": 1700000000,
+            "archive_last_modified": 0,
+            "reading_state_last_modified": 0,
+            "tags_last_modified": 0,
+        }
+    })
+
+    headers = {"x-kobo-synctoken": old_token}
+    token = SyncToken.from_headers(headers)
+
+    assert token.books_last_id == -1, "Missing books_last_id should default to -1"
+    assert token.books_last_modified != datetime.min, "Should parse other fields correctly"
+
+
+def test_empty_kobo_synced_books_resets_token(monkeypatch, tmp_path):
+    """If KoboSyncedBooks is empty, sync should start fresh regardless of token.
+
+    This tests the recovery mechanism for users with stale/bad sync state.
+    Clearing KoboSyncedBooks forces a full re-sync.
+    """
+    kobo = import_kobo()
+    from cps.services.SyncToken import b64encode_json
+
+    with _kobo_test_split_sessions(tmp_path) as (calibre_session, app_session):
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        app_session.add(user)
+        app_session.commit()
+
+        _seed_books(calibre_session, 3)
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user)
+        app = _create_test_flask_app()
+
+        # Create a token with timestamps far in the future (simulating stale state)
+        future_token = b64encode_json({
+            "version": "1-2-0",
+            "data": {
+                "raw_kobo_store_token": "",
+                "books_last_modified": 9999999999,
+                "books_last_created": 9999999999,
+                "books_last_id": 999999,
+                "archive_last_modified": 9999999999,
+                "reading_state_last_modified": 9999999999,
+                "tags_last_modified": 9999999999,
+            }
+        })
+
+        # KoboSyncedBooks is empty, so token should be reset despite future timestamps
+        _, payload = _make_sync_request(kobo, app, calibre_session, token=future_token)
+
+        assert len(payload) == 3, (
+            f"Expected all 3 books when KoboSyncedBooks is empty, got {len(payload)}. "
+            "Token reset mechanism not working."
+        )
+
+
+# =============================================================================
+# MULTIPLE SHELVES TESTS
+# Verify books on multiple Kobo-synced shelves sync exactly once.
+# =============================================================================
+
+def test_only_kobo_shelves_book_on_multiple_shelves_syncs_once(monkeypatch):
+    """Book on multiple Kobo-synced shelves should sync exactly once (distinct works)."""
+    kobo = import_kobo()
+
+    with _kobo_test_session() as session:
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        user.kobo_only_shelves_sync = 1
+        session.add(user)
+        session.commit()
+
+        _seed_books(session, 1)
+        book = session.query(db.Books).first()
+
+        # Add same book to 3 different Kobo-synced shelves
+        for i in range(3):
+            _create_kobo_shelf_with_books(session, user.id, [book.id], f"Kobo Shelf {i}")
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user)
+        app = _create_test_flask_app()
+
+        _, payload = _make_sync_request(kobo, app, session)
+        entitlements = [item for item in payload if "NewEntitlement" in item or "ChangedEntitlement" in item]
+
+        assert len(entitlements) == 1, (
+            f"Expected book once, got {len(entitlements)}. "
+            "distinct() clause not preventing duplicates from multiple shelves."
+        )
+
+
+def test_only_kobo_shelves_multiple_books_on_multiple_shelves(monkeypatch):
+    """Multiple books across multiple shelves should each sync exactly once."""
+    kobo = import_kobo()
+
+    with _kobo_test_session() as session:
+        user = ub.User(name="test", email="test@example.org", role=constants.ROLE_DOWNLOAD)
+        user.kobo_only_shelves_sync = 1
+        session.add(user)
+        session.commit()
+
+        _seed_books(session, 4)
+        books = session.query(db.Books).all()
+
+        # Shelf 1: books 0, 1, 2
+        _create_kobo_shelf_with_books(session, user.id, [books[0].id, books[1].id, books[2].id], "Shelf A")
+        # Shelf 2: books 1, 2, 3 (overlapping)
+        _create_kobo_shelf_with_books(session, user.id, [books[1].id, books[2].id, books[3].id], "Shelf B")
+
+        _setup_kobo_test_environment(monkeypatch, kobo, user)
+        app = _create_test_flask_app()
+
+        _, payload = _make_sync_request(kobo, app, session)
+        entitlements = [item for item in payload if "NewEntitlement" in item or "ChangedEntitlement" in item]
+        synced_ids = set(_extract_entitlement_ids(entitlements))
+
+        assert len(entitlements) == 4, (
+            f"Expected 4 unique books, got {len(entitlements)}. "
+            "Books on multiple shelves causing duplicates."
+        )
+        assert synced_ids == {b.uuid for b in books}, "All books should be synced exactly once"
+
+
+# =============================================================================
 # KEPUB CONVERSION TESTS
 # shelf.py needs to import helper module to trigger KEPUB conversion when
 # books are added to Kobo-synced shelves.
