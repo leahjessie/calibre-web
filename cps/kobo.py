@@ -182,9 +182,11 @@ def HandleSyncRequest():
     book_modified_col = func.replace(db.Books.last_modified, '+00:00', '')
 
     if only_kobo_shelves:
+        # Use func.max(date_added) and group_by to get one row per book even when
+        # the same book is on multiple Kobo-synced shelves
         changed_entries = calibre_db.session.query(db.Books,
                                                    ub.ArchivedBook.last_modified,
-                                                   ub.BookShelf.date_added,
+                                                   func.max(ub.BookShelf.date_added).label('date_added'),
                                                    ub.ArchivedBook.is_archived)
         changed_entries = (changed_entries
                            .join(db.Data).outerjoin(ub.ArchivedBook, and_(db.Books.id == ub.ArchivedBook.book_id,
@@ -193,19 +195,19 @@ def HandleSyncRequest():
                            .join(ub.Shelf)
                            .filter(ub.Shelf.user_id == current_user.id)
                            .filter(ub.Shelf.kobo_sync)
-                           .filter(or_(
-                                func.datetime(ub.BookShelf.date_added) > sync_token.tags_last_modified,
+                           .filter(db.Data.format.in_(KOBO_FORMATS))
+                           .filter(calibre_db.common_filters(allow_show_archived=True))
+                           .group_by(db.Books.id)
+                           .having(or_(
+                                func.max(func.datetime(ub.BookShelf.date_added)) > sync_token.tags_last_modified,
                                 book_modified_col > sync_token.books_last_modified,
                                 and_(
                                     book_modified_col == sync_token.books_last_modified,
                                     db.Books.id > sync_token.books_last_id
                                 )
                            ))
-                           .filter(db.Data.format.in_(KOBO_FORMATS))
-                           .filter(calibre_db.common_filters(allow_show_archived=True))
                            .order_by(book_modified_col)
-                           .order_by(db.Books.id)
-                           .distinct())
+                           .order_by(db.Books.id))
     else:
         changed_entries = calibre_db.session.query(db.Books,
                                                    ub.ArchivedBook.last_modified,
