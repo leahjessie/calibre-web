@@ -6,31 +6,35 @@ the master branch (without fixes), many tests fail as expected.
 
 Test Status (against master without fixes):
 -------------------------------------------
-PASS (7 tests):
+PASS (9 tests):
   - test_sync_returns_entitlements_and_updates_synced_books
   - test_sync_exactly_limit_does_not_set_continue_header
   - test_only_kobo_shelves_no_repeat_books_after_sync
   - test_sync_shelves_updates_tags_last_modified
   - test_only_kobo_shelves_or_condition_date_added_triggers_sync
   - test_timezone_suffix_in_last_modified_only_kobo_shelves
+  - test_sync_token_backwards_compatibility_missing_books_last_id
+  - test_empty_kobo_synced_books_resets_token
   - test_add_book_to_non_kobo_shelf_does_not_trigger_kepub_conversion
 
-FAIL (15 tests) - require fixes from pr-draft/kobo-sync:
+FAIL (17 tests) - require fixes from pr-draft/kobo-sync:
   - test_sync_over_limit_does_not_repeat_payload
   - test_sync_unchanged_library_after_full_sync_returns_empty
   - test_sync_mixed_modified_and_unchanged_only_returns_modified
   - test_modified_synced_book_is_resent
+  - test_only_kobo_shelves_pagination_no_repeats
   - test_only_kobo_shelves_modified_synced_book_is_resent
   - test_only_kobo_shelves_modified_synced_book_paginates_without_repeat
-  - test_only_kobo_shelves_pagination_no_repeats
-  - test_add_book_to_kobo_shelf_triggers_kepub_conversion
   - test_only_kobo_shelves_or_condition_last_modified_triggers_sync
   - test_pagination_with_duplicate_timestamps
   - test_modified_book_resync_with_duplicate_timestamps
   - test_mixed_timestamps_pagination
-  - test_timezone_suffix_in_last_modified_normal_mode
   - test_only_kobo_shelves_pagination_with_duplicate_timestamps
   - test_only_kobo_shelves_modified_book_resync_with_duplicate_timestamps
+  - test_timezone_suffix_in_last_modified_normal_mode
+  - test_only_kobo_shelves_book_on_multiple_shelves_syncs_once
+  - test_only_kobo_shelves_multiple_books_on_multiple_shelves
+  - test_add_book_to_kobo_shelf_triggers_kepub_conversion
 """
 import json
 import pytest
