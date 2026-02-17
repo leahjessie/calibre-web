@@ -314,7 +314,11 @@ def test_only_kobo_shelves_pagination_no_repeats(monkeypatch):
 
 
 def test_sync_shelves_updates_tags_last_modified(monkeypatch):
-    """Adding a book to a shelf after sync should trigger re-sync of that book."""
+    """Adding a book to a shelf after sync should trigger re-sync of that book.
+
+    Uses a deterministic timestamp derived from the sync token instead of wall
+    clock "now" to avoid timing/precision flakes across environments.
+    """
     kobo = import_kobo()
 
     with _kobo_test_session() as session:
@@ -334,15 +338,19 @@ def test_sync_shelves_updates_tags_last_modified(monkeypatch):
 
         response1, payload1 = _make_sync_request(kobo, app, session)
         token1 = response1.headers.get("x-kobo-synctoken")
+        token1_data = kobo.SyncToken.SyncToken.from_headers({"x-kobo-synctoken": token1})
 
         entitlements1 = [item for item in payload1 if "NewEntitlement" in item or "ChangedEntitlement" in item]
         assert len(entitlements1) == 2
 
         # Add third book to shelf
         shelf = session.query(ub.Shelf).filter(ub.Shelf.user_id == user.id).first()
+        base_tags_last_modified = token1_data.tags_last_modified
+        if base_tags_last_modified.tzinfo is None:
+            base_tags_last_modified = base_tags_last_modified.replace(tzinfo=timezone.utc)
         new_book_shelf = ub.BookShelf(
             book_id=books[2].id,
-            date_added=datetime.now(timezone.utc) + timedelta(seconds=1),
+            date_added=base_tags_last_modified + timedelta(minutes=2),
         )
         new_book_shelf.ub_shelf = shelf
         session.add(new_book_shelf)
