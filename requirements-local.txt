@@ -1,0 +1,3 @@
+# From optional-requirements.txt for Kobo sync. Without this, SyncToken
+# fails to import silently and all Kobo syncs return 500.
+jsonschema>=3.2.0,<4.30.0
