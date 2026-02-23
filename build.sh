@@ -16,6 +16,7 @@ set -euo pipefail
 #   --name BRANCH       result branch name (overrides profile)
 #   --branches 'b1 b2'  explicit branch list (bypasses profile BRANCHES)
 #   --dry-run           print what would be done; no git writes
+#   --help -h           print this help message
 
 # --- Resolve paths ---
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
