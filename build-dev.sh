@@ -18,7 +18,7 @@ if [[ $# -eq 1 && ( "$1" == "stable" || "$1" == "canary" ) ]]; then
     branches=()
     while IFS= read -r line; do
         branches+=("$line")
-    done < <(grep 'merge --no-ff' "$META_DIR/build-$1.sh" | grep -v '^\s*#' | awk '{print $NF}')
+    done < <(grep 'merge_branch' "$META_DIR/build-$1.sh" | grep -v '^\s*#' | awk '{print $NF}')
     if [[ ${#branches[@]} -eq 0 ]]; then
         echo "No branches found in build-$1.sh"
         exit 1
