@@ -30,6 +30,11 @@ NAME_OVERRIDE=""
 BRANCHES_OVERRIDE=""
 DRY_RUN=0
 
+if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then
+    awk 'NR==1{next} !found&&/^#/{found=1} found&&/^#/{sub(/^# ?/,"");print;next} found{exit}' "${BASH_SOURCE[0]}"
+    exit 0
+fi
+
 if [[ $# -gt 0 && "$1" != --* ]]; then
     PROFILE="$1"
     shift
