@@ -6,6 +6,13 @@ kepubify conversion for them.
 
 The tests work by directly testing the kepubify logic extracted from
 generate_auth_token to avoid complex Flask context/login requirements.
+
+TODO: These tests use a duplicated copy of the kepubify loop from
+kobo_auth.generate_auth_token (see _run_kepubify_logic) rather than calling
+the real function, due to Flask context/login requirements. This means they
+verify the intended behavior specification but won't catch regressions if the
+real function is refactored without updating the copy here. A future improvement
+would be to test generate_auth_token directly with a proper Flask test context.
 """
 
 import pytest
@@ -115,6 +122,9 @@ def _run_kepubify_logic(books, config_kepubifypath, config_calibre_dir, convert_
             formats = [data.format for data in book.data]
             if 'KEPUB' not in formats and config.config_kepubifypath and 'EPUB' in formats:
                 helper.convert_book_format(book.id, config.config_calibre_dir, 'EPUB', 'KEPUB', current_user.name)
+
+    NOTE: See module-level TODO — this duplicates production logic rather than calling
+    the real function. Keep in sync with kobo_auth.generate_auth_token if that changes.
     """
     for book in books:
         formats = [data.format for data in book.data]
