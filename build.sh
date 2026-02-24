@@ -12,10 +12,11 @@ set -euo pipefail
 #   build.sh stable --dry-run                    # print plan, no git writes
 #
 # Flags:
-#   --target WORKTREE   deploy result to this worktree (overrides profile; 'none' = skip)
+#   --target WORKTREE   deploy result to this worktree (overrides profile; 'none' = skip; run/ auto-restarts service)
 #   --name BRANCH       result branch name (overrides profile)
 #   --branches 'b1 b2'  explicit branch list (bypasses profile BRANCHES)
 #   --dry-run           print what would be done; no git writes
+#   --no-restart-run    skip com.calibre-web.app restart after deploying to run/
 #   --help -h           print this help message
 
 # --- Resolve paths ---
@@ -30,6 +31,7 @@ TARGET_OVERRIDE=""
 NAME_OVERRIDE=""
 BRANCHES_OVERRIDE=""
 DRY_RUN=0
+NO_RESTART_RUN=0
 
 if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then
     awk 'NR==1{next} !found&&/^#/{found=1} found&&/^#/{sub(/^# ?/,"");print;next} found{exit}' "${BASH_SOURCE[0]}"
@@ -46,7 +48,8 @@ while [[ $# -gt 0 ]]; do
         --target)   TARGET_OVERRIDE="$2"; shift 2 ;;
         --name)     NAME_OVERRIDE="$2";   shift 2 ;;
         --branches) BRANCHES_OVERRIDE="$2"; shift 2 ;;
-        --dry-run)  DRY_RUN=1; shift ;;
+        --dry-run)        DRY_RUN=1; shift ;;
+        --no-restart-run) NO_RESTART_RUN=1; shift ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
@@ -114,6 +117,9 @@ if [[ $DRY_RUN -eq 1 ]]; then
     echo "  6. Force-reset $BRANCH to HEAD"
     if [[ "$TARGET" != "none" ]]; then
         echo "  7. git -C $BASE_DIR/$TARGET checkout $BRANCH"
+    fi
+    if [[ "$TARGET" == "run" && $NO_RESTART_RUN -eq 0 ]]; then
+        echo "  8. launchctl kickstart -k gui/$(id -u)/com.calibre-web.app  (--no-restart-run to skip)"
     fi
     exit 0
 fi
@@ -216,10 +222,18 @@ if [[ -n "$TARGET_DIR" ]]; then
     git -C "$TARGET_DIR" checkout "$BRANCH"
 fi
 
+# 8. Restart com.calibre-web.app when deploying to run/ (prevents sync script from
+#    being the first restart of newly deployed code). Use --no-restart-run to skip.
+if [[ "$TARGET" == "run" && $NO_RESTART_RUN -eq 0 ]]; then
+    echo "Restarting service: com.calibre-web.app"
+    launchctl kickstart -k "gui/$(id -u)/com.calibre-web.app"
+fi
+
 # Success summary
 echo ""
 echo "Built successfully: $BRANCH"
 [[ -n "$TARGET_DIR" ]] && echo "Deployed to:       $TARGET_DIR"
+[[ "$TARGET" == "run" && $NO_RESTART_RUN -eq 0 ]] && echo "Service restarted:  com.calibre-web.app"
 echo ""
 echo "BUILD_INFO:"
 cat "$BUILD_DIR/BUILD_INFO"
