@@ -156,6 +156,31 @@ if [[ "$TARGET" != "none" ]]; then
     git -C "$TARGET_DIR" checkout --detach HEAD
 fi
 
+# 4b. Detach any other worktrees that have the result branch checked out,
+#     so git branch -f can update it without "in use by worktree" errors.
+#     (Handles e.g. lab/ still on run/canary when --target run is used.)
+wt_path=""
+wt_branch=""
+while IFS= read -r line; do
+    case "$line" in
+        worktree\ *)
+            wt_path="${line#worktree }"
+            wt_branch=""
+            ;;
+        branch\ refs/heads/*)
+            wt_branch="${line#branch refs/heads/}"
+            ;;
+        "")
+            if [[ "$wt_branch" == "$BRANCH" \
+                  && "$wt_path" != "$BUILD_DIR" \
+                  && "$wt_path" != "${TARGET_DIR:-__none__}" ]]; then
+                echo "Detaching $BRANCH from worktree at $wt_path..."
+                git -C "$wt_path" checkout --detach HEAD
+            fi
+            ;;
+    esac
+done < <(git -C "$DEV_DIR" worktree list --porcelain; echo)
+
 # 5. Build in build/ worktree
 # Abort any in-progress merge from a previous failed run, then reset to base
 git -C "$BUILD_DIR" merge --abort 2>/dev/null || true
