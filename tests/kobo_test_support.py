@@ -3,15 +3,16 @@ import sys
 import types
 from base64 import b64decode, b64encode
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from importlib import import_module
+from uuid import uuid4
 
 from flask import Flask, g
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from cps import db, ub
+from cps import constants, db, ub
 
 
 def _to_epoch_timestamp(datetime_object):
@@ -21,7 +22,6 @@ def _to_epoch_timestamp(datetime_object):
 def _get_datetime_from_json(json_object, field_name):
     try:
         # Convert epoch to UTC datetime (naive, matching kobo.py behavior)
-        from datetime import timezone
         return datetime.fromtimestamp(json_object[field_name], tz=timezone.utc).replace(tzinfo=None)
     except (KeyError, OSError, OverflowError):
         return datetime.min
@@ -125,7 +125,7 @@ def _create_test_flask_app():
 # Session builders and context managers
 # =============================================================================
 
-def _build_session():
+def _build_test_session():
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -167,9 +167,21 @@ def _build_split_sessions(tmp_path):
 
 
 @contextmanager
+def _test_session():
+    """Context manager for single-session test lifecycle (no ub.session swap)."""
+    session, conn, engine = _build_test_session()
+    try:
+        yield session
+    finally:
+        session.close()
+        conn.close()
+        engine.dispose()
+
+
+@contextmanager
 def _kobo_test_session():
-    """Context manager for single-session test lifecycle."""
-    session, conn, engine = _build_session()
+    """Context manager for single-session test lifecycle (swaps ub.session)."""
+    session, conn, engine = _build_test_session()
     old_session = ub.session
     ub.session = session
     try:
@@ -199,3 +211,63 @@ def _kobo_test_split_sessions(tmp_path):
         calibre_session.close()
         calibre_conn.close()
         calibre_engine.dispose()
+
+
+# =============================================================================
+# Data builders
+# =============================================================================
+
+def _create_book(session, title, authors=None, series_list=None):
+    """Create a book and flush (does not commit — caller controls transaction)."""
+    now = datetime.now(timezone.utc)
+    book = db.Books(
+        title=title,
+        sort=title,
+        author_sort="",
+        timestamp=now,
+        pubdate=db.Books.DEFAULT_PUBDATE,
+        series_index="1.0",
+        last_modified=now,
+        path=f"book_{title.replace(' ', '_')}",
+        has_cover=0,
+        authors=authors or [],
+        tags=[],
+        languages=[],
+    )
+    book.uuid = str(uuid4())
+    if authors:
+        book.authors = authors
+    if series_list:
+        book.series = series_list
+    session.add(book)
+    session.flush()
+    return book
+
+
+def _create_book_with_formats(session, title, formats):
+    """Create a book with db.Data format entries and commit."""
+    book = _create_book(session, title)
+    for fmt in formats:
+        session.add(
+            db.Data(
+                book=book.id,
+                book_format=fmt,
+                uncompressed_size=123,
+                name=f"{title.replace(' ', '_')}.{fmt.lower()}",
+            )
+        )
+    session.commit()
+    return book
+
+
+def _create_test_user(session, user_id=1):
+    """Create a minimal test user and commit."""
+    user = ub.User(
+        id=user_id,
+        name="test_user",
+        email="test@example.org",
+        role=constants.ROLE_DOWNLOAD,
+    )
+    session.add(user)
+    session.commit()
+    return user
