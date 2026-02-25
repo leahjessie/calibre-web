@@ -1,6 +1,6 @@
 # calibre-web — Claude Code Context
 
-See AGENTS.md for general project context (directory layout, branches, tests, paths, service management).
+See @AGENTS.md for general project context (directory layout, branches, tests, paths, service management).
 
 ## Claude-Specific Notes
 
