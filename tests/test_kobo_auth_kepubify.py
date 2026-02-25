@@ -16,98 +16,19 @@ would be to test generate_auth_token directly with a proper Flask test context.
 """
 
 import pytest
-from contextlib import contextmanager
-from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch, call
-from uuid import uuid4
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from test_support import install_stub_modules
+from test_support import (
+    install_stub_modules,
+    _kobo_test_session,
+    _create_book,
+    _create_book_with_formats,
+    _create_test_user,
+)
 
 install_stub_modules()
 
 from cps import db, ub, constants
-
-
-def _build_test_session():
-    """Create an in-memory SQLite session for testing with attached calibre schema."""
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    conn = engine.connect()
-    # Attach a calibre database in memory (required by db.Base models)
-    conn.execute(text("ATTACH DATABASE ':memory:' AS calibre"))
-    db.Base.metadata.create_all(conn)
-    ub.Base.metadata.create_all(conn)
-    Session = sessionmaker(bind=conn)
-    return Session(), conn, engine
-
-
-@contextmanager
-def _test_session_context():
-    """Context manager for test session lifecycle."""
-    session, conn, engine = _build_test_session()
-    old_ub_session = ub.session
-    ub.session = session
-    try:
-        yield session
-    finally:
-        session.close()
-        ub.session = old_ub_session
-        conn.close()
-        engine.dispose()
-
-
-def _create_book_with_formats(session, title, formats):
-    """Create a book with specified formats (e.g., ['EPUB'], ['EPUB', 'KEPUB'])."""
-    now = datetime.now(timezone.utc)
-    book = db.Books(
-        title=title,
-        sort=title,
-        author_sort="",
-        timestamp=now,
-        pubdate=db.Books.DEFAULT_PUBDATE,
-        series_index="1.0",
-        last_modified=now,
-        path=f"book_{title.replace(' ', '_')}",
-        has_cover=0,
-        authors=[],
-        tags=[],
-        languages=[],
-    )
-    book.uuid = str(uuid4())
-    session.add(book)
-    session.flush()
-
-    for fmt in formats:
-        session.add(
-            db.Data(
-                book=book.id,
-                book_format=fmt,
-                uncompressed_size=123,
-                name=f"{title.replace(' ', '_')}.{fmt.lower()}",
-            )
-        )
-    session.commit()
-    return book
-
-
-def _create_test_user(session, user_id=1):
-    """Create a test user for auth token generation."""
-    user = ub.User(
-        id=user_id,
-        name="test_user",
-        email="test@example.org",
-        role=constants.ROLE_DOWNLOAD,
-    )
-    session.add(user)
-    session.commit()
-    return user
 
 
 def _run_kepubify_logic(books, config_kepubifypath, config_calibre_dir, convert_func, user_name):
@@ -140,7 +61,7 @@ class TestGenerateAuthTokenKepubify:
         Test that a book with ONLY EPUB format triggers kepubify conversion
         when config_kepubifypath is set.
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             book = _create_book_with_formats(session, "EPUB Only Book", ["EPUB"])
 
             mock_convert = MagicMock()
@@ -162,7 +83,7 @@ class TestGenerateAuthTokenKepubify:
         Test that a book with BOTH EPUB and KEPUB formats does NOT trigger
         kepubify conversion (KEPUB already exists).
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             book = _create_book_with_formats(session, "Both Formats Book", ["EPUB", "KEPUB"])
 
             mock_convert = MagicMock()
@@ -182,7 +103,7 @@ class TestGenerateAuthTokenKepubify:
         Test that a book with ONLY KEPUB format (no EPUB) does NOT trigger
         kepubify conversion (no source EPUB to convert).
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             book = _create_book_with_formats(session, "KEPUB Only Book", ["KEPUB"])
 
             mock_convert = MagicMock()
@@ -205,7 +126,7 @@ class TestGenerateAuthTokenKepubify:
         This is the key test for the user's concern - verifying that the
         loop iterates through ALL books, not just processing one.
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             book1 = _create_book_with_formats(session, "Book 1", ["EPUB"])
             book2 = _create_book_with_formats(session, "Book 2", ["EPUB"])
             book3 = _create_book_with_formats(session, "Book 3", ["EPUB"])
@@ -237,7 +158,7 @@ class TestGenerateAuthTokenKepubify:
         Test that NO kepubify conversion happens when config_kepubifypath
         is not set (None).
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             book = _create_book_with_formats(session, "EPUB Only Book", ["EPUB"])
 
             mock_convert = MagicMock()
@@ -257,7 +178,7 @@ class TestGenerateAuthTokenKepubify:
         Test that NO kepubify conversion happens when config_kepubifypath
         is an empty string (falsy value).
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             book = _create_book_with_formats(session, "EPUB Only Book", ["EPUB"])
 
             mock_convert = MagicMock()
@@ -282,7 +203,7 @@ class TestGenerateAuthTokenKepubify:
 
         Only books with EPUB but not KEPUB should trigger kepubify.
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             epub_only_1 = _create_book_with_formats(session, "EPUB Only 1", ["EPUB"])
             epub_only_2 = _create_book_with_formats(session, "EPUB Only 2", ["EPUB"])
             kepub_only = _create_book_with_formats(session, "KEPUB Only", ["KEPUB"])
@@ -322,7 +243,7 @@ class TestGenerateAuthTokenKepubify:
         Test with a large number of books to ensure the loop completes
         for all books without early termination.
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             # Create 100 EPUB-only books
             books = []
             for i in range(100):
@@ -366,7 +287,7 @@ class TestGenerateAuthTokenIntegration:
         then runs them through the extracted kepubify logic, proving that
         real DB books work correctly with the conversion logic.
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             book1 = _create_book_with_formats(session, "EPUB Only 1", ["EPUB"])
             book2 = _create_book_with_formats(session, "Both Formats", ["EPUB", "KEPUB"])
             book3 = _create_book_with_formats(session, "EPUB Only 2", ["EPUB"])
@@ -410,7 +331,7 @@ class TestGenerateAuthTokenIntegration:
 
         This is a sanity check that our test setup correctly mimics production.
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             book = _create_book_with_formats(session, "Test Book", ["EPUB", "PDF"])
 
             # Query the same way as generate_auth_token
@@ -430,28 +351,12 @@ class TestGenerateAuthTokenIntegration:
         The query `session.query(db.Books).join(db.Data).all()` uses an inner join,
         so books without data should not be returned.
         """
-        with _test_session_context() as session:
+        with _kobo_test_session() as session:
             # Create a book WITH data
             book_with_data = _create_book_with_formats(session, "Has Data", ["EPUB"])
 
-            # Create a book WITHOUT data (manually, since _create_book_with_formats always adds data)
-            now = datetime.now(timezone.utc)
-            book_without_data = db.Books(
-                title="No Data",
-                sort="No Data",
-                author_sort="",
-                timestamp=now,
-                pubdate=db.Books.DEFAULT_PUBDATE,
-                series_index="1.0",
-                last_modified=now,
-                path="book_no_data",
-                has_cover=0,
-                authors=[],
-                tags=[],
-                languages=[],
-            )
-            book_without_data.uuid = str(uuid4())
-            session.add(book_without_data)
+            # Create a book WITHOUT data
+            book_without_data = _create_book(session, "No Data")
             session.commit()
 
             # Query the same way as generate_auth_token
