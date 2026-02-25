@@ -89,6 +89,8 @@ Plist (lab): `~/Library/LaunchAgents/com.calibre-web.app.wt.plist` — not auto-
 App log (run): `~/.calibre-web/run/calibre-web.log` — Python logging, rotated
 App log (lab): `~/.calibre-web/lab/calibre-web.log` — Python logging, rotated
 Startup log: `~/Library/Logs/calibre-web.log` — timestamped start events, both instances
+launchd stdout/stderr (run): `~/Library/Logs/calibre-web.stdout.log`, `calibre-web.stderr.log`
+launchd stdout/stderr (lab): `~/Library/Logs/calibre-web-wt.stdout.log`, `calibre-web-wt.stderr.log`
 
 ## Key Paths
 

@@ -58,6 +58,7 @@ if [[ -z "$PROFILE" && -z "$BRANCHES_OVERRIDE" ]]; then
     echo "Usage: build.sh <profile> [--target W] [--name B] [--dry-run]" >&2
     echo "       build.sh --branches 'b1 b2' --name B [--target W] [--dry-run]" >&2
     echo "Profiles: $(ls "$SCRIPT_DIR/profiles/"*.conf 2>/dev/null | xargs -n1 basename | sed 's/\.conf//' | tr '\n' ' ')" >&2
+    echo "Run 'build.sh --help' for full usage." >&2
     exit 1
 fi
 
