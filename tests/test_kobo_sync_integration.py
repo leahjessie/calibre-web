@@ -439,7 +439,7 @@ def test_only_kobo_shelves_or_condition_date_added_triggers_sync(monkeypatch):
         shelf = session.query(ub.Shelf).filter(ub.Shelf.user_id == user.id).first()
         new_book_shelf = ub.BookShelf(
             book_id=books[2].id,
-            date_added=datetime.now(timezone.utc) + timedelta(seconds=1),
+            date_added=datetime.now(timezone.utc) + timedelta(minutes=5),
         )
         new_book_shelf.ub_shelf = shelf
         session.add(new_book_shelf)
