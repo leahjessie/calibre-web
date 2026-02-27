@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from cps import ub
 
-from kobo_test_support import import_kobo
+from test_support import import_kobo
 
 
 def test_progress_percent_whole_number_returned_as_int():

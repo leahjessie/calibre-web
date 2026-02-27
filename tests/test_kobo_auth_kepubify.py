@@ -25,7 +25,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from kobo_test_support import install_stub_modules
+from test_support import install_stub_modules
 
 install_stub_modules()
 
