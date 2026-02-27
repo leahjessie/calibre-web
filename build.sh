@@ -129,7 +129,7 @@ fi
 merge_branch() {
     local branch="$1"
     echo "Merging $branch..."
-    git -C "$BUILD_DIR" merge --no-ff "$branch" || {
+    git -C "$BUILD_DIR" merge --no-ff --no-edit "$branch" || {
         if ! git -C "$BUILD_DIR" rev-parse MERGE_HEAD &>/dev/null; then
             echo "Failed to merge $branch (branch missing or other error)" >&2; exit 1
         fi
