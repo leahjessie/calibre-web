@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from flask import Flask
 
-from kobo_test_support import import_kobo
+from test_support import import_kobo
 
 
 def _make_app():

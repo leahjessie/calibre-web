@@ -1,5 +1,5 @@
 """Tests for kepub conversion on shelf sync."""
-from kobo_test_support import install_stub_modules
+from test_support import install_stub_modules
 
 
 def test_add_book_to_kobo_shelf_triggers_kepub_conversion():

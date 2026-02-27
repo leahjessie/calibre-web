@@ -8,7 +8,7 @@ from flask import g
 from sqlalchemy import text
 from sqlalchemy.sql.expression import true
 
-from kobo_test_support import import_kobo, _create_test_flask_app, _kobo_test_session, _kobo_test_split_sessions
+from test_support import import_kobo, _create_test_flask_app, _kobo_test_session, _kobo_test_split_sessions
 
 from cps import db, ub, constants, kobo_sync_status
 
