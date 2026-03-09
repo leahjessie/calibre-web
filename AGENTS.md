@@ -69,19 +69,24 @@ Full workflow documentation: `~/Developer/calibre-web/meta/WORKFLOW.md`
 
 ## launchd Service
 
+Service labels: **run = `cw`**, **lab = `cwt`**
+
 ```bash
-# Check what branch of app is running where
-tail ~/Library/Logs/calibre-web.log          # timestamped start events, target and  branch name only
+# Check what's running
+tail ~/Library/Logs/calibre-web.log          # timestamped start events for both instances
 git -C ~/Developer/calibre-web/run branch --show-current
 
-# Restart service (branch unchanged)
-svc restart com.calibre-web.app
+# --- run instance (auto-started, production) ---
+svc restart cw                               # restart, branch unchanged
+deploy-cw.sh run/canary                      # switch to canary branch and restart
+deploy-cw.sh                                 # switch back to run/stable and restart
+svc bootout cw && svc bootstrap cw           # full reload after plist edit
 
-# Switch branch and restart
-deploy-cw.sh run/canary
-
-# After editing plist (bootout required to re-read plist):
-svc bootout com.calibre-web.app && svc bootstrap com.calibre-web.app
+# --- lab instance (not auto-started, for testing) ---
+build.sh lab                                 # rebuild from profiles/lab.conf and deploy to lab/
+svc restart cwt                              # restart after rebuild (branch already updated)
+svc bootstrap cwt                            # start lab if not running
+svc bootout cwt                              # stop lab
 ```
 
 Plist (run): `~/Library/LaunchAgents/com.calibre-web.app.plist`
