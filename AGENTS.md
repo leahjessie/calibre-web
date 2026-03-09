@@ -69,25 +69,28 @@ Full workflow documentation: `~/Developer/calibre-web/meta/WORKFLOW.md`
 
 ## launchd Service
 
-Service labels: **run = `cw`**, **lab = `cwt`**
-
 ```bash
 # Check what's running
 tail ~/Library/Logs/calibre-web.log          # timestamped start events for both instances
 git -C ~/Developer/calibre-web/run branch --show-current
 
 # --- run instance (auto-started, production) ---
-svc restart cw                               # restart, branch unchanged
-deploy-cw.sh run/canary                      # switch to canary branch and restart
-deploy-cw.sh                                 # switch back to run/stable and restart
-svc bootout cw && svc bootstrap cw           # full reload after plist edit
+# label: com.calibre-web.app
+launchctl kickstart -k gui/$(id -u)/com.calibre-web.app          # restart, branch unchanged
+deploy-cw.sh run/canary                                           # switch to canary and restart
+deploy-cw.sh                                                      # switch back to run/stable
+# full reload after plist edit:
+launchctl bootout gui/$(id -u)/com.calibre-web.app && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.calibre-web.app.plist
 
 # --- lab instance (not auto-started, for testing) ---
-build.sh lab                                 # rebuild from profiles/lab.conf and deploy to lab/
-svc restart cwt                              # restart after rebuild (branch already updated)
-svc bootstrap cwt                            # start lab if not running
-svc bootout cwt                              # stop lab
+# label: com.calibre-web.app.wt
+build.sh lab                                                                    # rebuild from profiles/lab.conf and deploy to lab/
+launchctl kickstart -k gui/$(id -u)/com.calibre-web.app.wt                     # restart after rebuild
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.calibre-web.app.wt.plist  # start lab if not running
+launchctl bootout gui/$(id -u)/com.calibre-web.app.wt                          # stop lab
 ```
+
+Note: `svc` is a zsh shell function (defined in `~/.config/zsh/functions.zsh`) and is not available in non-interactive shells. Use `launchctl` commands above instead.
 
 Plist (run): `~/Library/LaunchAgents/com.calibre-web.app.plist`
 Plist (lab): `~/Library/LaunchAgents/com.calibre-web.app.wt.plist` — not auto-started
