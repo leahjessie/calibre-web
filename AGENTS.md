@@ -83,22 +83,22 @@ deploy-cw.sh                                                      # switch back 
 launchctl bootout gui/$(id -u)/com.calibre-web.app && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.calibre-web.app.plist
 
 # --- lab instance (not auto-started, for testing) ---
-# label: com.calibre-web.app.wt
+# label: com.calibre-web.app.lab
 build.sh lab                                                                    # rebuild from profiles/lab.conf and deploy to lab/
-launchctl kickstart -k gui/$(id -u)/com.calibre-web.app.wt                     # restart after rebuild
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.calibre-web.app.wt.plist  # start lab if not running
-launchctl bootout gui/$(id -u)/com.calibre-web.app.wt                          # stop lab
+launchctl kickstart -k gui/$(id -u)/com.calibre-web.app.lab                    # restart after rebuild
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.calibre-web.app.lab.plist  # start lab if not running
+launchctl bootout gui/$(id -u)/com.calibre-web.app.lab                         # stop lab
 ```
 
 Note: `svc` is a zsh shell function (defined in `~/.config/zsh/functions.zsh`) and is not available in non-interactive shells. Use `launchctl` commands above instead.
 
 Plist (run): `~/Library/LaunchAgents/com.calibre-web.app.plist`
-Plist (lab): `~/Library/LaunchAgents/com.calibre-web.app.wt.plist` — not auto-started
+Plist (lab): `~/Library/LaunchAgents/com.calibre-web.app.lab.plist` — not auto-started
 App log (run): `~/.calibre-web/run/calibre-web.log` — Python logging, rotated
 App log (lab): `~/.calibre-web/lab/calibre-web.log` — Python logging, rotated
 Startup log: `~/Library/Logs/calibre-web.log` — timestamped start events, both instances
 launchd stdout/stderr (run): `~/Library/Logs/calibre-web.stdout.log`, `calibre-web.stderr.log`
-launchd stdout/stderr (lab): `~/Library/Logs/calibre-web-wt.stdout.log`, `calibre-web-wt.stderr.log`
+launchd stdout/stderr (lab): `~/Library/Logs/calibre-web-lab.stdout.log`, `calibre-web-lab.stderr.log`
 
 ## Key Paths
 
