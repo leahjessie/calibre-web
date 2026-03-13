@@ -25,6 +25,7 @@ FILES=(
     paginator.js
     fixed-layout.js
     footnotes.js
+    search.js
     reader.js
     ui/tree.js
     ui/menu.js
