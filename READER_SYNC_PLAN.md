@@ -245,6 +245,8 @@ Phase 2 adapter rule when both sources have data:
   is Kobo
 - `reader_position` should only override Kobo automatically when it is ahead by
   a meaningful `book_progress` margin
+- the exact threshold is intentionally left unspecified here and should be tuned
+  empirically during lab testing rather than hardcoded prematurely
 - never auto-regress Kobo from a lower web progress value
 - if progress is effectively tied, keep current Kobo behavior unchanged
 - this is safer for reading position than timestamp-only last-write-wins during
@@ -290,6 +292,9 @@ Data-model implication:
 
 - a declined web-side conflict can be resolved by overwriting the canonical row
   with the current web position (`source = "web"`)
+- Kobo-side decline is asymmetric: the server does not receive an explicit
+  "declined sync" signal, so a later Kobo PUT is indistinguishable from an
+  ordinary local read/update unless richer per-source cached state is preserved
 - the opposite direction is harder: if Kobo later overwrites the canonical row,
   preserving the exact prior web position may require richer
   `native_locator.web` fields such as cached web `cfi` and progress values
