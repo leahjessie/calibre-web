@@ -224,6 +224,50 @@ Implement first:
 - do not repurpose the legacy `bookmark` table
 - keep legacy bookmark dual-write only for temporary compatibility
 
+### Phase 2 implementation scope: shared -> Kobo consumption
+
+Phase 2 should add a read-only adapter from `reader_position` into Kobo GET/sync
+responses. Kobo PUT/import still remains out of scope.
+
+Rules:
+
+- consult `reader_position` only when preparing Kobo reading-state responses
+- do not write Kobo PUT data into `reader_position` yet
+- if `reader_position` has no row for the user/book, fall through to the
+  existing `KoboReadingState` behavior unchanged
+- if `reader_position` exists but does not provide a usable Kobo-native locator
+  or viable fallback, fall through to the existing `KoboReadingState` behavior
+  unchanged
+
+Precedence when both sources have data:
+
+- compare `reader_position.updated_at` against `KoboReadingState.last_modified`
+- whichever is newer is the canonical source for the response
+- this keeps phase 2 deterministic while both storage systems coexist
+
+Kobo response shaping:
+
+- best case: if the winning source is `reader_position` and
+  `native_locator.kobo` is fresh, return exact Kobo-native location data
+- otherwise use fallback behavior from the shared model only when it is known to
+  be safe
+- otherwise fall through to the current `KoboReadingState` response path
+
+Already-known safe fallback:
+
+- omitting the `Location` block entirely is already proven safe in current Kobo
+  responses, because fresh/unpositioned books do this today when
+  `location_value` is absent
+- therefore phase 2 does not need to re-prove `ProgressPercent` without
+  `Location`
+
+Remaining open question:
+
+- whether sending `Location.Source` without `Location.Value` is safe on real
+  Kobo devices
+- this is narrower than the earlier fallback question and should be verified
+  before using partial `Location` shapes in production
+
 ### Why
 
 This repo auto-runs app-db migrations at startup via `cps/ub.py`, so rollback of
@@ -331,11 +375,11 @@ These should reuse:
 
 ## Immediate Next Steps
 
-1. Mirror this finalized schema into the implementation branch work.
-2. Add the first additive `reader_position` migration in `cps/ub.py`.
-3. Add model helpers for canonical fields plus per-source `native_locator`
-   updates.
-4. Update the web reader save path to dual-write `reader_position` and legacy
-   bookmark data.
-5. After that, test web-only shared-position writes before touching Kobo
-   consumption.
+1. Keep validating the web-only phase 1 behavior in lab.
+2. Design the phase 2 Kobo adapter around explicit precedence between
+   `reader_position` and `KoboReadingState`.
+3. Verify the remaining narrow fallback question: whether Kobo accepts
+   `Location.Source` without `Location.Value`.
+4. Implement the shared -> Kobo adapter with strict fallthrough to current
+   behavior when `reader_position` is missing or unusable.
+5. Only after that, consider Kobo -> shared import and full conflict handling.
