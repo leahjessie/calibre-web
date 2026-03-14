@@ -419,3 +419,43 @@ These should reuse:
 4. Implement the shared -> Kobo adapter with strict fallthrough to current
    behavior when `reader_position` is missing or unusable.
 5. Only after that, consider Kobo -> shared import and full conflict handling.
+
+## Next Implementation Steps For Phase 2
+
+1. Identify the exact Kobo GET/sync response builders that currently serialize
+   `KoboReadingState`, and insert the adapter at the last possible point before
+   response shaping.
+2. Keep the existing `KoboReadingState` lookup as the baseline path, then layer
+   `reader_position` evaluation on top so phase 2 stays read-only and can
+   always fall through cleanly.
+3. Implement a small pure winner-selection helper that takes progress inputs,
+   returns a decision plus reason, and has no DB access or side effects. Use a
+   named constant for the forward-progress threshold rather than an inline
+   number, so lab tuning is easy.
+4. Treat ties, regressions, malformed rows, and missing native data as
+   non-wins; in all of those cases, return the current Kobo behavior
+   unchanged.
+5. When the shared winner is Kobo and `native_locator.kobo` is fresh, reuse the
+   stored raw Kobo location fields verbatim so the device gets an exact
+   round-trip locator. Note: this path is expected to be mostly or entirely
+   inactive in phase 2 because Kobo PUT/import is still out of scope, so add a
+   comment in code to make that expectation explicit.
+6. When the shared winner is web, start with the already-known-safe fallback:
+   send `ProgressPercent` from `book_progress` and omit `Location` unless lab
+   testing proves partial `Location` shapes are safe.
+7. Add targeted logging for lab builds with a dedicated prefix such as
+   `[reader-sync]` around the adapter decision points: source row found or not,
+   override accepted or rejected, fallback mode used, and exact reason for
+   every fallthrough.
+8. Cover the adapter with focused tests for:
+   no `reader_position` row, tied progress, lower web progress, meaningfully
+   higher web progress, fresh Kobo-native reuse, and malformed
+   `native_locator.kobo`.
+9. Validate the behavior on the lab Kobo against at least one title already
+   used for rendition matching, confirming that:
+   higher web progress advances Kobo, tied progress does not churn the stored
+   state, and fallback without `Location` remains safe. Be prepared to seed a
+   `reader_position` row manually in the lab DB if phase-1 web writes are not
+   yet available in the test build.
+10. Leave Kobo PUT/import out of the branch until the read path is stable and
+    device-tested; phase 2 should remain strictly shared -> Kobo only.
