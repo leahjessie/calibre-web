@@ -159,6 +159,11 @@ Write:
 Preferred:
 
 - if previously known Kobo-native locator exists, reuse it when still valid
+- when building Kobo response fields from a valid native Kobo locator, prefer
+  `raw_progress_percent` and `raw_content_source_progress_percent` from
+  `native_locator` over recomputing percentages from normalized fractions
+- rationale: raw Kobo integers round-trip exactly and avoid floating-point drift
+  or mismatched rounding against device expectations
 
 Valid means:
 
@@ -229,24 +234,35 @@ conditions.
 - restore snapshot when testing older code that assumes old schema
 - do not assume a branch checkout is a database rollback
 
-## Format/Rendition Risk: EPUB vs KEPUB
+## Format/Rendition Findings: EPUB vs KEPUB
 
-Open question:
+Matched-title results for `How to AI`, same approximate location in Chapter 11:
 
-- are browser `href` paths and Kobo `Location.Source` paths comparable for the
-  same title across EPUB vs KEPUB?
+- browser KEPUB `href` matched Kobo KEPUB `Location.Source` exactly after
+  stripping the browser fragment (`#page_...`)
+- browser EPUB `href` also matched the same Kobo KEPUB `Location.Source`
+- therefore `doc_href` is currently the strongest validated shared anchor across
+  browser EPUB, browser KEPUB, and Kobo KEPUB for at least one real title
 
-This must be checked before finalizing uniqueness on `(user_id, book_id)` alone.
+What did not match exactly:
 
-Possible outcomes:
+- browser KEPUB and browser EPUB `bookProgress` differed at the same rough
+  location, so `book_progress` must be treated as coarse / approximate across
+  renditions
+- browser `docProgress` did not match Kobo
+  `ContentSourceProgressPercent`, so these are not interchangeable and must
+  remain source-specific
+- browser KEPUB CFI contained `kobo.*` markers, while browser EPUB CFI did not;
+  therefore `cfi` is rendition-specific precision data, not a shared canonical
+  coordinate
 
-- if paths are compatible enough, one row per `(user_id, book_id)` is fine
-- if not, either:
-  - add rendition/format distinction
-  - or introduce a rendition-neutral mapping layer
+Current conclusion:
 
-For local deployment, steering browser reading toward KEPUB may reduce this risk,
-but it should still be verified with a real matched title.
+- uniqueness on `(user_id, book_id)` is more plausible than before because
+  document-path compatibility looks good on one matched title
+- however, precise resume remains rendition-specific, so shared cross-rendition
+  resume should still be treated as approximate in v1
+- keep this as "validated on one title, not universally proven"
 
 ## Browser Progress Exposure Spike
 
@@ -277,6 +293,8 @@ Expected implementation shape:
 - browser `docProgress` is stable within a chapter/document
 - browser `docProgress` resets appropriately on chapter/document change
 - browser `href` can be compared meaningfully with Kobo `Location.Source`
+- browser `docProgress` may still differ semantically from Kobo
+  `ContentSourceProgressPercent`
 
 ## Deferred Future Entities
 
@@ -295,7 +313,8 @@ These should reuse:
 
 ## Immediate Next Steps
 
-1. Verify EPUB vs KEPUB path compatibility on one matched title.
-2. Add a small browser-side spike to expose `docProgress`.
-3. Compare browser `href/docProgress` with Kobo `Source/ContentSourceProgressPercent`.
-4. Only then finalize the first schema migration in `cps/ub.py`.
+1. Commit the small browser-side guards/logging changes used for the spike.
+2. Treat `doc_href` as the primary shared anchor in the first schema draft.
+3. Keep `book_progress` as coarse shared progress only.
+4. Keep `doc_progress` and native Kobo location fields as source-specific.
+5. Then finalize the first additive schema migration in `cps/ub.py`.
