@@ -422,9 +422,9 @@ These should reuse:
 
 ## Next Implementation Steps For Phase 2
 
-1. Identify the exact Kobo GET/sync response builders that currently serialize
-   `KoboReadingState`, and insert the adapter at the last possible point before
-   response shaping.
+1. Add a small adapter/helper in `cps/kobo.py` or nearby that takes
+   `ReaderPosition` plus `KoboReadingState` and returns the existing Kobo
+   `CurrentBookmark` response shape. Keep it isolated from route logic first.
 2. Keep the existing `KoboReadingState` lookup as the baseline path, then layer
    `reader_position` evaluation on top so phase 2 stays read-only and can
    always fall through cleanly.
@@ -447,15 +447,23 @@ These should reuse:
    `[reader-sync]` around the adapter decision points: source row found or not,
    override accepted or rejected, fallback mode used, and exact reason for
    every fallthrough.
-8. Cover the adapter with focused tests for:
+8. Cover the adapter with focused tests before wiring it into routes:
    no `reader_position` row, tied progress, lower web progress, meaningfully
    higher web progress, fresh Kobo-native reuse, and malformed
-   `native_locator.kobo`.
-9. Validate the behavior on the lab Kobo against at least one title already
+   `native_locator.kobo`. Include the existing-behavior regression case where
+   missing `location_value` still omits `Location`.
+9. Only after the adapter tests pass, wire the helper into the two Kobo read
+   paths:
+   `/v1/library/<uuid>/state` GET and `/v1/library/sync` changed-state or
+   entitlement response building.
+10. Validate the behavior on the lab Kobo against at least one title already
    used for rendition matching, confirming that:
    higher web progress advances Kobo, tied progress does not churn the stored
    state, and fallback without `Location` remains safe. Be prepared to seed a
    `reader_position` row manually in the lab DB if phase-1 web writes are not
-   yet available in the test build.
-10. Leave Kobo PUT/import out of the branch until the read path is stable and
-    device-tested; phase 2 should remain strictly shared -> Kobo only.
+   yet available in the test build. Answer the progress-only fallback question
+   first; only after that should lab testing expand to `Location.Source`
+   without `Location.Value`.
+11. Leave Kobo PUT/import out of the branch until the read path is stable and
+    device-tested; phase 2 should remain strictly shared -> Kobo only, with no
+    conflict UX yet.
