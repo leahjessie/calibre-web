@@ -15,6 +15,9 @@ COMMIT="81e37d2a84ed36694df521883b51953ef76a7d6e"
 # Destination relative to the calibre-web dev worktree
 DEST="$HOME/Developer/calibre-web/dev/cps/static/js/libs/foliate-js"
 
+# paginator.js is NOT from readest — it comes from johnfactotum/foliate (src/foliate-js/paginator.js)
+# The readest fork's paginator caches docBackground before theme CSS is injected, breaking theme colors.
+# Update paginator.js manually from that repo when needed.
 FILES=(
     view.js
     epubcfi.js
@@ -22,7 +25,6 @@ FILES=(
     overlayer.js
     text-walker.js
     epub.js
-    paginator.js
     fixed-layout.js
     footnotes.js
     search.js
