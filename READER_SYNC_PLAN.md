@@ -239,18 +239,23 @@ Rules:
   or viable fallback, fall through to the existing `KoboReadingState` behavior
   unchanged
 
-Precedence when both sources have data:
+Phase 2 adapter rule when both sources have data:
 
-- compare `reader_position.updated_at` against `KoboReadingState.last_modified`
-- whichever is newer is the canonical source for the response
-- this keeps phase 2 deterministic while both storage systems coexist
+- exact Kobo-native locator is still preferred when fresh and the winning source
+  is Kobo
+- `reader_position` should only override Kobo automatically when it is ahead by
+  a meaningful `book_progress` margin
+- never auto-regress Kobo from a lower web progress value
+- if progress is effectively tied, keep current Kobo behavior unchanged
+- this is safer for reading position than timestamp-only last-write-wins during
+  the mixed-storage phase
 
 Kobo response shaping:
 
-- best case: if the winning source is `reader_position` and
-  `native_locator.kobo` is fresh, return exact Kobo-native location data
-- otherwise use fallback behavior from the shared model only when it is known to
-  be safe
+- best case: if the winning source is Kobo and `native_locator.kobo` is fresh,
+  return exact Kobo-native location data
+- if web is meaningfully ahead and phase-2 fallback is enabled, use shared-model
+  fallback behavior only when it is known to be safe
 - otherwise fall through to the current `KoboReadingState` response path
 
 Already-known safe fallback:
@@ -267,6 +272,32 @@ Remaining open question:
   Kobo devices
 - this is narrower than the earlier fallback question and should be verified
   before using partial `Location` shapes in production
+
+### Phase 3 note: web conflict UX and per-source cache pressure
+
+Phase 3 may add an optional web “resume from other device?” prompt when web and
+Kobo positions differ meaningfully.
+
+Planned UX rules:
+
+- prompt after render, not before
+- do not prompt for trivial differences
+- if the user accepts, jump to the offered position and persist it
+- if the user declines, immediately persist the current local position so the
+  same stale discrepancy does not re-prompt on every open
+
+Data-model implication:
+
+- a declined web-side conflict can be resolved by overwriting the canonical row
+  with the current web position (`source = "web"`)
+- the opposite direction is harder: if Kobo later overwrites the canonical row,
+  preserving the exact prior web position may require richer
+  `native_locator.web` fields such as cached web `cfi` and progress values
+- those cached web fields would intentionally represent the exact web position,
+  even when canonical columns represent a different current winner; they are
+  not accidental duplicates
+- this is a phase-3 concern, not a phase-2 blocker, and can be handled by JSON
+  expansion without another schema migration
 
 ### Why
 
@@ -376,8 +407,8 @@ These should reuse:
 ## Immediate Next Steps
 
 1. Keep validating the web-only phase 1 behavior in lab.
-2. Design the phase 2 Kobo adapter around explicit precedence between
-   `reader_position` and `KoboReadingState`.
+2. Design the phase 2 Kobo adapter around the forward-progress guard, not
+   timestamp-only precedence.
 3. Verify the remaining narrow fallback question: whether Kobo accepts
    `Location.Source` without `Location.Value`.
 4. Implement the shared -> Kobo adapter with strict fallthrough to current
