@@ -82,6 +82,11 @@ Columns:
 - `payload_version`
 - `native_locator` JSON
 
+Uniqueness:
+
+- uniqueness on `(user_id, book_id)` is still TBD
+- final key shape depends on the EPUB vs KEPUB path-compatibility check below
+
 ### Rules
 
 - top-level columns are canonical normalized fields
@@ -89,6 +94,9 @@ Columns:
 - do not duplicate canonical fields inside `native_locator`
 - `source_updated_at` is preserved for debugging and future conflict handling
 - `updated_at` remains server-authoritative
+- `payload_version` versions the `native_locator` JSON schema for this table
+- bump `payload_version` only when the shape or interpretation of `native_locator`
+  changes
 
 ### Native payload examples
 
@@ -103,6 +111,12 @@ Kobo:
   "raw_content_source_progress_percent": 8
 }
 ```
+
+Note:
+
+- `raw_source_path` intentionally duplicates the unnormalized source path so an
+  exact Kobo locator can be reconstructed later even if canonical `doc_href` is
+  normalized for cross-source comparison
 
 Web:
 
@@ -146,14 +160,32 @@ Preferred:
 
 - if previously known Kobo-native locator exists, reuse it when still valid
 
+Valid means:
+
+- the stored native Kobo locator belongs to the same effective document as the
+  current canonical `doc_href`
+- in practice, the first validity test should be whether `raw_source_path`
+  still matches the current document anchor being sent back to Kobo
+- if the web reader has moved to a different document/chapter, an older Kobo
+  locator for the prior document must be treated as stale and not reused
+
 Fallback:
 
-- use `doc_href` plus coarse progress mapping if native Kobo locator is absent
+- if native Kobo locator is absent or stale, do not invent a fake
+  `Location.Value`
+- if `doc_href` is known, send `Location.Source = doc_href` only when Kobo
+  accepts a partial location shape in testing
+- otherwise omit the `Location` block entirely and send only coarse
+  `ProgressPercent` derived from `book_progress`
+- never send an empty or placeholder `Location.Value`
+- this behavior must be verified against real device behavior before rollout
 
 Known v1 limitation:
 
 - if a position originated on web only and no Kobo-native locator exists, Kobo
   resume may be approximate rather than exact-word precise
+- specifically, fallback may only be able to place Kobo at the right document or
+  approximate area, not at an exact word/span position
 
 ## Migration Plan
 
@@ -174,6 +206,22 @@ position.
 This repo auto-runs app-db migrations at startup via `cps/ub.py`, so rollback of
 code does not imply rollback of schema. Additive-only changes are safest for lab
 and canary use.
+
+### Dual-write compatibility window
+
+During early rollout:
+
+- web reader writes the new `reader_position` row
+- web reader also continues writing the legacy `bookmark.bookmark_key`
+
+Exit conditions for ending dual-write:
+
+- web restore reads from `reader_position`
+- lab Kobo consumption is stable enough to trust the new shared model
+- there is a deliberate story for handling existing legacy bookmark rows
+
+Do not allow dual-write to continue indefinitely without revisiting those exit
+conditions.
 
 ### Lab rollback practice
 
