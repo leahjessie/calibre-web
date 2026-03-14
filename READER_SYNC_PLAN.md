@@ -84,8 +84,10 @@ Columns:
 
 Uniqueness:
 
-- uniqueness on `(user_id, book_id)` is still TBD
-- final key shape depends on the EPUB vs KEPUB path-compatibility check below
+- unique on `(user_id, book_id)` for v1
+- one canonical row per user/book, not one row per source
+- per-source exact resume data lives inside `native_locator`, not in duplicate
+  top-level rows
 
 ### Rules
 
@@ -100,37 +102,36 @@ Uniqueness:
 
 ### Native payload examples
 
-Kobo:
+Example `native_locator` shape:
 
 ```json
 {
-  "location_type": "KoboSpan",
-  "location_value": "kobo.12.1",
-  "raw_source_path": "OEBPS/text/9780061743511_Chapter_5.xhtml",
-  "raw_progress_percent": 31,
-  "raw_content_source_progress_percent": 8
-}
-```
-
-Note:
-
-- `raw_source_path` intentionally duplicates the unnormalized source path so an
-  exact Kobo locator can be reconstructed later even if canonical `doc_href` is
-  normalized for cross-source comparison
-
-Web:
-
-```json
-{
-  "chapter_label": "Chapter 5"
+  "kobo": {
+    "location_type": "KoboSpan",
+    "location_value": "kobo.12.1",
+    "raw_source_path": "OEBPS/text/9780061743511_Chapter_5.xhtml",
+    "raw_progress_percent": 31,
+    "raw_content_source_progress_percent": 8
+  },
+  "web": {
+    "chapter_label": "Chapter 5"
+  }
 }
 ```
 
 Notes:
 
+- `native_locator` is keyed by source so exact Kobo and web resume hints can be
+  retained at the same time
 - `doc_href` and `cfi` should not be duplicated in JSON
-- `doc_progress` is optional
-- web may leave `doc_progress` null until we expose it reliably
+- `raw_source_path` intentionally duplicates the unnormalized Kobo source path
+  so an exact Kobo locator can be reconstructed later even if canonical
+  `doc_href` is normalized for cross-source comparison
+- `doc_progress` is optional and source-specific
+- web and Kobo can both populate `doc_progress`, but it should not be assumed
+  interoperable across sources
+- web may end up storing only `chapter_label` in `native_locator`, or nothing,
+  if no additional web-only extras are needed
 
 ## Translation Layer
 
@@ -151,8 +152,8 @@ Write:
 - `doc_href = href`
 - `book_progress = fraction`
 - `cfi = cfi`
-- `doc_progress` only if exposed reliably from Foliate
-- optional display-only extras such as `chapter_label` in `native_locator`
+- `doc_progress` from Foliate `getCFIProgress(cfi)` when available
+- optional display-only extras such as `chapter_label` in `native_locator.web`
 
 ### Shared -> Kobo
 
@@ -198,6 +199,16 @@ Known v1 limitation:
 
 First migration is needed at the start of real implementation of shared reading
 position.
+
+### Phase 1 implementation scope
+
+Implement first:
+
+- web reader writes `reader_position`
+- web reader continues dual-writing legacy `bookmark.bookmark_key`
+- web restore may continue using legacy bookmark until the new path is proven
+- Kobo remains read-only consumer for now; do not import Kobo writes into the
+  shared model yet
 
 ### Migration policy
 
@@ -273,7 +284,7 @@ Goal:
 Current best path:
 
 - extend the web `relocate` handler detail to include `docProgress`
-- likely derive it via existing `view.getCFIProgress(cfi)`
+- derive it via existing `view.getCFIProgress(cfi)`
 
 Expected implementation shape:
 
@@ -313,8 +324,11 @@ These should reuse:
 
 ## Immediate Next Steps
 
-1. Commit the small browser-side guards/logging changes used for the spike.
-2. Treat `doc_href` as the primary shared anchor in the first schema draft.
-3. Keep `book_progress` as coarse shared progress only.
-4. Keep `doc_progress` and native Kobo location fields as source-specific.
-5. Then finalize the first additive schema migration in `cps/ub.py`.
+1. Mirror this finalized schema into the implementation branch work.
+2. Add the first additive `reader_position` migration in `cps/ub.py`.
+3. Add model helpers for canonical fields plus per-source `native_locator`
+   updates.
+4. Update the web reader save path to dual-write `reader_position` and legacy
+   bookmark data.
+5. After that, test web-only shared-position writes before touching Kobo
+   consumption.
