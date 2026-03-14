@@ -94,6 +94,9 @@ Uniqueness:
 - top-level columns are canonical normalized fields
 - `native_locator` is supplementary only
 - do not duplicate canonical fields inside `native_locator`
+- `native_locator` must be merged by source key (`kobo`, `web`) on update; do
+  not replace the entire JSON blob and accidentally erase another source's
+  exact locator data
 - `source_updated_at` is preserved for debugging and future conflict handling
 - `updated_at` remains server-authoritative
 - `payload_version` versions the `native_locator` JSON schema for this table
@@ -149,7 +152,7 @@ Write:
 
 Write:
 
-- `doc_href = href`
+- `doc_href = href` with browser fragment stripped before storage
 - `book_progress = fraction`
 - `cfi = cfi`
 - `doc_progress` from Foliate `getCFIProgress(cfi)` when available
@@ -159,21 +162,24 @@ Write:
 
 Preferred:
 
-- if previously known Kobo-native locator exists, reuse it when still valid
+- if `source == "kobo"` and previously known Kobo-native locator exists,
+  reuse it as the exact Kobo resume locator
 - when building Kobo response fields from a valid native Kobo locator, prefer
   `raw_progress_percent` and `raw_content_source_progress_percent` from
   `native_locator` over recomputing percentages from normalized fractions
 - rationale: raw Kobo integers round-trip exactly and avoid floating-point drift
   or mismatched rounding against device expectations
 
-Valid means:
+Fresh exact Kobo reuse means:
 
-- the stored native Kobo locator belongs to the same effective document as the
-  current canonical `doc_href`
-- in practice, the first validity test should be whether `raw_source_path`
-  still matches the current document anchor being sent back to Kobo
-- if the web reader has moved to a different document/chapter, an older Kobo
-  locator for the prior document must be treated as stale and not reused
+- `source == "kobo"`, i.e. the last canonical write came from Kobo
+- a Kobo-native locator exists in `native_locator.kobo`
+- when `source != "kobo"`, treat the stored Kobo-native locator as a stale
+  exact-position hint and fall back rather than pretending it still represents
+  the current canonical position
+- `raw_source_path == doc_href` remains a useful sanity check, but not a
+  sufficient freshness test on its own because a web read could move within the
+  same document without changing `doc_href`
 
 Fallback:
 
@@ -207,8 +213,9 @@ Implement first:
 - web reader writes `reader_position`
 - web reader continues dual-writing legacy `bookmark.bookmark_key`
 - web restore may continue using legacy bookmark until the new path is proven
-- Kobo remains read-only consumer for now; do not import Kobo writes into the
-  shared model yet
+- Kobo does not read from or write to `reader_position` in phase 1; Kobo
+  continues using existing Kobo reading-state tables and endpoints unchanged
+- do not import Kobo writes into the shared model yet
 
 ### Migration policy
 
