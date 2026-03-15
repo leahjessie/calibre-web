@@ -440,30 +440,51 @@ These should reuse:
    round-trip locator. Note: this path is expected to be mostly or entirely
    inactive in phase 2 because Kobo PUT/import is still out of scope, so add a
    comment in code to make that expectation explicit.
-6. When the shared winner is web, start with the already-known-safe fallback:
-   send `ProgressPercent` from `book_progress` and omit `Location` unless lab
-   testing proves partial `Location` shapes are safe.
-7. Add targeted logging for lab builds with a dedicated prefix such as
+6. When the shared winner is web, do not use progress-only fallback as the
+   default path. Lab device testing showed that `ProgressPercent` without
+   `Location` can sync successfully yet reopen the book at the cover/start.
+   Instead, first try to synthesize a Kobo-native bookmark from browser
+   `reader_position` data when available:
+   `doc_href -> Location.Source`, extracted `kobo.<n>.<n>` token from `cfi` ->
+   `Location.Value`, `KoboSpan -> Location.Type`, `book_progress ->
+   ProgressPercent`, and `doc_progress -> ContentSourceProgressPercent`.
+7. Treat browser-derived Kobo locator synthesis as guarded behavior, not an
+   assumption. Only take the exact synthesized path when `reader_position`
+   provides a usable `doc_href` plus `kobo.<n>.<n>` token. Keep negative cases
+   such as short/front-matter KEPUB sections that produce no usable Kobo token.
+8. Add a separate lab experiment for the no-token case rather than hard-coding
+   the fallback policy up front. Explicitly test whether a partial `Location`
+   shape such as valid `Location.Source` with no usable Kobo token is accepted
+   by the device and resumes better than the rejected progress-only fallback.
+9. Add targeted logging for lab builds with a dedicated prefix such as
    `[reader-sync]` around the adapter decision points: source row found or not,
    override accepted or rejected, fallback mode used, and exact reason for
    every fallthrough.
-8. Cover the adapter with focused tests before wiring it into routes:
-   no `reader_position` row, tied progress, lower web progress, meaningfully
-   higher web progress, fresh Kobo-native reuse, and malformed
-   `native_locator.kobo`. Include the existing-behavior regression case where
-   missing `location_value` still omits `Location`.
-9. Only after the adapter tests pass, wire the helper into the two Kobo read
+10. Cover the adapter with focused tests before wiring it into routes:
+   no `reader_position` row, tied progress, lower web progress, browser row
+   with synthesizeable Kobo token, browser row with no usable Kobo token, fresh
+   Kobo-native reuse, and malformed `native_locator.kobo`. Include the
+   existing-behavior regression case where missing `location_value` still omits
+   `Location`.
+11. Update the existing request-level phase-2 route tests when the synthesized
+   bookmark path is introduced. The current `/state` and `/sync` route tests
+   assert the initial progress-only fallback shape (for example, no
+   `Location` when web wins); those assertions should flip to match the
+   synthesized-locator behavior rather than blocking the route wiring step.
+12. Only after the adapter tests pass, wire the helper into the two Kobo read
    paths:
    `/v1/library/<uuid>/state` GET and `/v1/library/sync` changed-state or
    entitlement response building.
-10. Validate the behavior on the lab Kobo against at least one title already
+13. Validate the behavior on the lab Kobo against at least one title already
    used for rendition matching, confirming that:
-   higher web progress advances Kobo, tied progress does not churn the stored
-   state, and fallback without `Location` remains safe. Be prepared to seed a
+   higher web progress advances Kobo when a browser-derived Kobo token exists,
+   tied progress does not churn the stored state, and the no-token experiment
+   is evaluated separately from the exact-token path. Be prepared to seed a
    `reader_position` row manually in the lab DB if phase-1 web writes are not
-   yet available in the test build. Answer the progress-only fallback question
-   first; only after that should lab testing expand to `Location.Source`
-   without `Location.Value`.
-11. Leave Kobo PUT/import out of the branch until the read path is stable and
+   yet available in the test build. The progress-only fallback question is now
+   answered "not acceptable" for general use; only after exact-token behavior
+   is validated should lab testing expand to partial `Location` shapes such as
+   `Location.Source` without a usable Kobo token.
+14. Leave Kobo PUT/import out of the branch until the read path is stable and
     device-tested; phase 2 should remain strictly shared -> Kobo only, with no
     conflict UX yet.
