@@ -243,37 +243,42 @@ Phase 2 adapter rule when both sources have data:
 
 - exact Kobo-native locator is still preferred when fresh and the winning source
   is Kobo
-- `reader_position` should only override Kobo automatically when it is ahead by
-  a meaningful `book_progress` margin
-- the exact threshold is intentionally left unspecified here and should be tuned
-  empirically during lab testing rather than hardcoded prematurely
+- choose the winner by recency first, not progress alone:
+  compare `ReaderPosition.updated_at` with `KoboReadingState.last_modified`
+- if Kobo wrote more recently than web, keep Kobo as the winner even if web is
+  numerically ahead; this prevents stale web state from silently snapping Kobo
+  backward or forward after a newer on-device read
+- only if web wrote more recently than Kobo should progress be consulted, and
+  then only as a forward-progress guard to avoid trivial churn
+- the exact forward-progress threshold is still intentionally left unspecified
+  here and should be tuned empirically during lab testing rather than
+  hardcoded prematurely
 - never auto-regress Kobo from a lower web progress value
 - if progress is effectively tied, keep current Kobo behavior unchanged
-- this is safer for reading position than timestamp-only last-write-wins during
-  the mixed-storage phase
+- this is safer for reading position than either pure progress-wins or
+  timestamp-only last-write-wins during the mixed-storage phase
 
 Kobo response shaping:
 
 - best case: if the winning source is Kobo and `native_locator.kobo` is fresh,
   return exact Kobo-native location data
-- if web is meaningfully ahead and phase-2 fallback is enabled, use shared-model
-  fallback behavior only when it is known to be safe
+- if web wins and a browser-derived Kobo locator can be synthesized, return the
+  synthesized Kobo-native bookmark
+- if web wins and device testing confirms that presenting a cross-device
+  conflict is preferable to a silent snap, generate a fresh remote
+  `PriorityTimestamp` / reading-state timestamp so Kobo can surface a
+  meaningful popup; if Kobo wins, continue mirroring device timestamp semantics
+  so there is no spurious popup or churn
 - otherwise fall through to the current `KoboReadingState` response path
-
-Already-known safe fallback:
-
-- omitting the `Location` block entirely is already proven safe in current Kobo
-  responses, because fresh/unpositioned books do this today when
-  `location_value` is absent
-- therefore phase 2 does not need to re-prove `ProgressPercent` without
-  `Location`
 
 Remaining open question:
 
 - whether sending `Location.Source` without `Location.Value` is safe on real
-  Kobo devices
-- this is narrower than the earlier fallback question and should be verified
-  before using partial `Location` shapes in production
+  Kobo devices when no usable `kobo.<n>.<n>` token is available
+- whether a fresh remote timestamp on genuine web wins reliably triggers the
+  same meaningful popup behavior that Kobo cloud uses for cross-device resume
+- whether that popup-driven path is preferable to silent override once winner
+  selection is recency-first
 
 ### Phase 3 note: web conflict UX and per-source cache pressure
 
@@ -428,11 +433,14 @@ These should reuse:
 2. Keep the existing `KoboReadingState` lookup as the baseline path, then layer
    `reader_position` evaluation on top so phase 2 stays read-only and can
    always fall through cleanly.
-3. Implement a small pure winner-selection helper that takes progress inputs,
-   returns a decision plus reason, and has no DB access or side effects. Use a
-   named constant for the forward-progress threshold rather than an inline
-   number, so lab tuning is easy.
-4. Treat ties, regressions, malformed rows, and missing native data as
+3. Implement a small pure winner-selection helper that takes timestamps and
+   progress inputs, returns a decision plus reason, and has no DB access or
+   side effects. Compare `ReaderPosition.updated_at` against
+   `KoboReadingState.last_modified` first; only if web is fresher should
+   forward-progress be consulted. Use a named constant for the
+   forward-progress threshold rather than an inline number, so lab tuning is
+   easy.
+4. Treat ties, regressions, stale web rows, malformed rows, and missing native data as
    non-wins; in all of those cases, return the current Kobo behavior
    unchanged.
 5. When the shared winner is Kobo and `native_locator.kobo` is fresh, reuse the
@@ -458,14 +466,15 @@ These should reuse:
    by the device and resumes better than the rejected progress-only fallback.
 9. Add targeted logging for lab builds with a dedicated prefix such as
    `[reader-sync]` around the adapter decision points: source row found or not,
-   override accepted or rejected, fallback mode used, and exact reason for
-   every fallthrough.
+   override accepted or rejected, whether web lost on recency or progress,
+   whether a fresh remote timestamp/PT was emitted, fallback mode used, and
+   exact reason for every fallthrough.
 10. Cover the adapter with focused tests before wiring it into routes:
-   no `reader_position` row, tied progress, lower web progress, browser row
-   with synthesizeable Kobo token, browser row with no usable Kobo token, fresh
-   Kobo-native reuse, and malformed `native_locator.kobo`. Include the
-   existing-behavior regression case where missing `location_value` still omits
-   `Location`.
+   no `reader_position` row, Kobo newer than web, web newer but not ahead
+   enough, browser row with synthesizeable Kobo token, browser row with no
+   usable Kobo token, fresh Kobo-native reuse, and malformed
+   `native_locator.kobo`. Include the existing-behavior regression case where
+   missing `location_value` still omits `Location`.
 11. Update the existing request-level phase-2 route tests when the synthesized
    bookmark path is introduced. The current `/state` and `/sync` route tests
    assert the initial progress-only fallback shape (for example, no
@@ -477,14 +486,22 @@ These should reuse:
    entitlement response building.
 13. Validate the behavior on the lab Kobo against at least one title already
    used for rendition matching, confirming that:
-   higher web progress advances Kobo when a browser-derived Kobo token exists,
-   tied progress does not churn the stored state, and the no-token experiment
-   is evaluated separately from the exact-token path. Be prepared to seed a
-   `reader_position` row manually in the lab DB if phase-1 web writes are not
-   yet available in the test build. The progress-only fallback question is now
-   answered "not acceptable" for general use; only after exact-token behavior
-   is validated should lab testing expand to partial `Location` shapes such as
-   `Location.Source` without a usable Kobo token.
-14. Leave Kobo PUT/import out of the branch until the read path is stable and
+   newer web progress advances Kobo when a browser-derived Kobo token exists,
+   newer Kobo activity prevents stale web override even when web is farther
+   ahead numerically, and the no-token experiment is evaluated separately from
+   the exact-token path. Be prepared to seed a `reader_position` row manually
+   in the lab DB if phase-1 web writes are not yet available in the test
+   build. The progress-only fallback question is now answered "not acceptable"
+   for general use; only after exact-token behavior is validated should lab
+   testing expand to partial `Location` shapes such as `Location.Source`
+   without a usable Kobo token.
+14. After recency-first winner selection is in place, run a focused lab
+   experiment on popup behavior:
+   if web genuinely wins, try emitting a fresh remote
+   `PriorityTimestamp` / reading-state timestamp and verify whether Kobo shows
+   a meaningful "return to last page read" style popup; if Kobo wins or the
+   sources tie, keep mirroring device timestamp semantics so there is no
+   spurious popup.
+15. Leave Kobo PUT/import out of the branch until the read path is stable and
     device-tested; phase 2 should remain strictly shared -> Kobo only, with no
     conflict UX yet.
