@@ -1,687 +1,225 @@
 # Reader/Kobo Position Sync Plan
 
-## Status
+## Current State
 
-This note captures the current planning state for syncing reading position between
-the web reader and Kobo, and is stored in `meta/` so it persists across branch
-switches.
+This note tracks the current state of reader/Kobo position sync work and the
+next implementation steps.
 
-The current approach is:
+What is already true:
 
-- implement a low-risk shared reading-position model first
-- defer real bookmark and annotation implementation, but design with them in mind
-- avoid modifying the legacy `bookmark` table beyond temporary compatibility use
+- the web reader writes shared position data into `reader_position`
+- browser-originated rows often contain enough Kobo-shaped data to synthesize a
+  usable local-book Kobo bookmark:
+  - `doc_href -> Location.Source`
+  - extracted `kobo.<n>.<n>` token from browser `cfi -> Location.Value`
+  - `doc_progress -> ContentSourceProgressPercent`
+  - `book_progress -> ProgressPercent`
+- that synthesized bookmark works on device much better than the earlier
+  progress-only fallback
+- winner selection for shared -> Kobo responses is now recency-first rather
+  than progress-only:
+  - compare shared source time against `KoboReadingState.last_modified`
+  - if Kobo is fresher, Kobo wins even if web is numerically ahead
+  - only if web is at least as fresh should forward-progress be consulted
+- for genuine web wins, withholding `ReadingState` from `/sync` and serving it
+  on `/v1/library/<uuid>/state` GET causes Kobo to show the expected popup
 
-## Confirmed Kobo Findings
+Current branch state:
 
-Observed from run logs with `[kobo-ts]` logging:
+- `feat/epub-reader-foliate` contains the real shared-reader and shared -> Kobo
+  behavior changes
+- `debug/kobo-single-book-trace` contains single-book trace instrumentation on
+  top of the feature branch
+- lab has already been validated against the branch stack from `lab.conf`
 
+## Important Learnings
+
+### Kobo payload facts
+
+- Kobo gives exact local position as `Location.Source + Location.Value`
 - `Location.Type` is consistently `KoboSpan`
-- `Location.Source` is a document path within the book, for example:
-  - `OEBPS/text/9780061743511_Chapter_4.xhtml`
-  - `OEBPS/xhtml/chapter1_split_015.xhtml`
-  - `text/part0014.html`
-- `Location.Value` is a Kobo-local within-document locator, for example:
-  - `kobo.46.3`
-  - `kobo.225.5`
-  - `kobo.12.1`
-  - `kobo.2.1`
-- `Location.Value` is not meaningful globally without `Location.Source`
-- `ContentSourceProgressPercent` behaves like document/chapter-local progress
-- `ProgressPercent` behaves like global-book progress
-
-Implications:
-
-- the meaningful Kobo-native locator is at least `(Location.Source, Location.Value)`
-- `ContentSourceProgressPercent` should not be treated as canonical global progress
-- Kobo is giving us a usable document anchor plus a proprietary in-document token
-
-## Current Web Reader Data
-
-From `feat/epub-reader-foliate`:
-
-- current web reader saved position contains:
-  - `href`
-  - `cfi`
-  - `fraction`
-  - `chapterLabel`
-- `fraction` is whole-book progress
-- `href` is the current document/chapter href
-- `cfi` is precise web-reader position
-
-Important Foliate finding:
-
-- `View.#onRelocate()` already computes progress with:
-  - `SectionProgress.getProgress(index, fraction, size)`
-- `View.getCFIProgress(cfi)` already exists and does:
-  - `PageProgress.getProgress(cfi)`
-  - then `SectionProgress.getProgress(progress.index, progress.fraction)`
-
-This strongly suggests browser-side document-local progress is exposable with a
-small wiring change.
-
-## Shared Position Model
-
-### Canonical table
-
-Proposed first table: `reader_position`
-
-Columns:
-
-- `id`
-- `user_id`
-- `book_id`
-- `source`
-- `created_at`
-- `updated_at`
-- `source_updated_at`
-- `doc_href`
-- `book_progress`
-- `doc_progress`
-- `cfi`
-- `payload_version`
-- `native_locator` JSON
-
-Uniqueness:
-
-- unique on `(user_id, book_id)` for v1
-- one canonical row per user/book, not one row per source
-- per-source exact resume data lives inside `native_locator`, not in duplicate
-  top-level rows
-
-### Rules
-
-- top-level columns are canonical normalized fields
-- `native_locator` is supplementary only
-- do not duplicate canonical fields inside `native_locator`
-- `native_locator` must be merged by source key (`kobo`, `web`) on update; do
-  not replace the entire JSON blob and accidentally erase another source's
-  exact locator data
-- `source_updated_at` is preserved for debugging and future conflict handling
-- `updated_at` remains server-authoritative
-- `payload_version` versions the `native_locator` JSON schema for this table
-- bump `payload_version` only when the shape or interpretation of `native_locator`
-  changes
-
-### Native payload examples
-
-Example `native_locator` shape:
-
-```json
-{
-  "kobo": {
-    "location_type": "KoboSpan",
-    "location_value": "kobo.12.1",
-    "raw_source_path": "OEBPS/text/9780061743511_Chapter_5.xhtml",
-    "raw_progress_percent": 31,
-    "raw_content_source_progress_percent": 8
-  },
-  "web": {
-    "chapter_label": "Chapter 5"
-  }
-}
-```
+- `ProgressPercent` is whole-book progress
+- `ContentSourceProgressPercent` is document-local progress
+- Kobo does not send EPUB CFI in `PUT /state`
 
-Notes:
-
-- `native_locator` is keyed by source so exact Kobo and web resume hints can be
-  retained at the same time
-- `doc_href` and `cfi` should not be duplicated in JSON
-- `raw_source_path` intentionally duplicates the unnormalized Kobo source path
-  so an exact Kobo locator can be reconstructed later even if canonical
-  `doc_href` is normalized for cross-source comparison
-- `doc_progress` is optional and source-specific
-- web and Kobo can both populate `doc_progress`, but it should not be assumed
-  interoperable across sources
-- web may end up storing only `chapter_label` in `native_locator`, or nothing,
-  if no additional web-only extras are needed
+Implication:
 
-## Translation Layer
+- a Kobo-originated `reader_position` row should be expected to carry
+  `native_locator["kobo"]`, not `cfi`
+- `cfi` remains a web-native precision field
 
-### Kobo -> shared
+### Browser payload facts
 
-Write:
+- browser rows carry exact web position in `cfi`
+- browser KEPUB CFI can contain embedded Kobo tokens like `kobo.<n>.<n>`
+- those tokens can be extracted to synthesize a Kobo-native locator for
+  shared -> Kobo responses
 
-- `doc_href = Location.Source`
-- `book_progress = ProgressPercent / 100`
-- `doc_progress = ContentSourceProgressPercent / 100`
-- store `Location.Type` and `Location.Value` in `native_locator`
-- `source_updated_at` from Kobo request timestamp when available
-
-### Web -> shared
-
-Write:
-
-- `doc_href = href` with browser fragment stripped before storage
-- `book_progress = fraction`
-- `cfi = cfi`
-- `doc_progress` from Foliate `getCFIProgress(cfi)` when available
-- optional display-only extras such as `chapter_label` in `native_locator.web`
-
-### Shared -> Kobo
-
-Preferred:
-
-- if `source == "kobo"` and previously known Kobo-native locator exists,
-  reuse it as the exact Kobo resume locator
-- when building Kobo response fields from a valid native Kobo locator, prefer
-  `raw_progress_percent` and `raw_content_source_progress_percent` from
-  `native_locator` over recomputing percentages from normalized fractions
-- rationale: raw Kobo integers round-trip exactly and avoid floating-point drift
-  or mismatched rounding against device expectations
-
-Fresh exact Kobo reuse means:
-
-- `source == "kobo"`, i.e. the last canonical write came from Kobo
-- a Kobo-native locator exists in `native_locator.kobo`
-- when `source != "kobo"`, treat the stored Kobo-native locator as a stale
-  exact-position hint and fall back rather than pretending it still represents
-  the current canonical position
-- `raw_source_path == doc_href` remains a useful sanity check, but not a
-  sufficient freshness test on its own because a web read could move within the
-  same document without changing `doc_href`
-
-Fallback:
-
-- if native Kobo locator is absent or stale, do not invent a fake
-  `Location.Value`
-- if `doc_href` is known, send `Location.Source = doc_href` only when Kobo
-  accepts a partial location shape in testing
-- otherwise omit the `Location` block entirely and send only coarse
-  `ProgressPercent` derived from `book_progress`
-- never send an empty or placeholder `Location.Value`
-- this behavior must be verified against real device behavior before rollout
-
-Known v1 limitation:
-
-- if a position originated on web only and no Kobo-native locator exists, Kobo
-  resume may be approximate rather than exact-word precise
-- specifically, fallback may only be able to place Kobo at the right document or
-  approximate area, not at an exact word/span position
-
-## Migration Plan
-
-### Migration timing
-
-First migration is needed at the start of real implementation of shared reading
-position.
-
-### Phase 1 implementation scope
-
-Implement first:
-
-- web reader writes `reader_position`
-- web reader continues dual-writing legacy `bookmark.bookmark_key`
-- web restore may continue using legacy bookmark until the new path is proven
-- Kobo does not read from or write to `reader_position` in phase 1; Kobo
-  continues using existing Kobo reading-state tables and endpoints unchanged
-- do not import Kobo writes into the shared model yet
-
-### Migration policy
-
-- additive only
-- no destructive changes
-- do not repurpose the legacy `bookmark` table
-- keep legacy bookmark dual-write only for temporary compatibility
-
-### Phase 2 implementation scope: shared -> Kobo consumption
-
-Phase 2 should add a read-only adapter from `reader_position` into Kobo GET/sync
-responses. Kobo PUT/import still remains out of scope.
-
-Rules:
-
-- consult `reader_position` only when preparing Kobo reading-state responses
-- do not write Kobo PUT data into `reader_position` yet
-- if `reader_position` has no row for the user/book, fall through to the
-  existing `KoboReadingState` behavior unchanged
-- if `reader_position` exists but does not provide a usable Kobo-native locator
-  or viable fallback, fall through to the existing `KoboReadingState` behavior
-  unchanged
-
-Phase 2 adapter rule when both sources have data:
-
-- exact Kobo-native locator is still preferred when fresh and the winning source
-  is Kobo
-- choose the winner by recency first, not progress alone:
-  compare `ReaderPosition.updated_at` with `KoboReadingState.last_modified`
-- if Kobo wrote more recently than web, keep Kobo as the winner even if web is
-  numerically ahead; this prevents stale web state from silently snapping Kobo
-  backward or forward after a newer on-device read
-- only if web wrote more recently than Kobo should progress be consulted, and
-  then only as a forward-progress guard to avoid trivial churn
-- the exact forward-progress threshold is still intentionally left unspecified
-  here and should be tuned empirically during lab testing rather than
-  hardcoded prematurely
-- never auto-regress Kobo from a lower web progress value
-- if progress is effectively tied, keep current Kobo behavior unchanged
-- this is safer for reading position than either pure progress-wins or
-  timestamp-only last-write-wins during the mixed-storage phase
-
-Kobo response shaping:
-
-- best case: if the winning source is Kobo and `native_locator.kobo` is fresh,
-  return exact Kobo-native location data
-- if web wins and a browser-derived Kobo locator can be synthesized, return the
-  synthesized Kobo-native bookmark
-- if web wins and device testing confirms that presenting a cross-device
-  conflict is preferable to a silent snap, generate a fresh remote
-  `PriorityTimestamp` / reading-state timestamp so Kobo can surface a
-  meaningful popup; if Kobo wins, continue mirroring device timestamp semantics
-  so there is no spurious popup or churn
-- otherwise fall through to the current `KoboReadingState` response path
-
-Remaining open question:
-
-- whether sending `Location.Source` without `Location.Value` is safe on real
-  Kobo devices when no usable `kobo.<n>.<n>` token is available
-- whether a fresh remote timestamp on genuine web wins reliably triggers the
-  same meaningful popup behavior that Kobo cloud uses for cross-device resume
-- whether that popup-driven path is preferable to silent override once winner
-  selection is recency-first
-
-### Phase 3 note: web conflict UX and per-source cache pressure
-
-Phase 3 may add an optional web “resume from other device?” prompt when web and
-Kobo positions differ meaningfully.
-
-Planned UX rules:
-
-- prompt after render, not before
-- do not prompt for trivial differences
-- if the user accepts, jump to the offered position and persist it
-- if the user declines, immediately persist the current local position so the
-  same stale discrepancy does not re-prompt on every open
-
-Data-model implication:
-
-- a declined web-side conflict can be resolved by overwriting the canonical row
-  with the current web position (`source = "web"`)
-- Kobo-side decline is asymmetric: the server does not receive an explicit
-  "declined sync" signal, so a later Kobo PUT is indistinguishable from an
-  ordinary local read/update unless richer per-source cached state is preserved
-- the opposite direction is harder: if Kobo later overwrites the canonical row,
-  preserving the exact prior web position may require richer
-  `native_locator.web` fields such as cached web `cfi` and progress values
-- those cached web fields would intentionally represent the exact web position,
-  even when canonical columns represent a different current winner; they are
-  not accidental duplicates
-- this is a phase-3 concern, not a phase-2 blocker, and can be handled by JSON
-  expansion without another schema migration
-
-### Step 3 prerequisite: move `reader_position` to per-source rows
-
-Before Kobo dual-write is added, the table should be migrated from one shared
-row per `(user_id, book_id)` to one row per `(user_id, book_id, source)`.
-
-This should happen before Step 3 rather than being deferred:
-
-- the current single-row constraint means web and Kobo would overwrite each
-  other
-- that would prevent true read-time arbitration because only the last writer
-  would survive
-- the temporary guarded-overwrite compromise would just delay the migration
-  that the design already wants
+Implication:
+
+- browser rows can sometimes drive exact-enough Kobo resume even without Kobo
+  having written the shared table yet
+
+### Timestamp semantics
+
+- `updated_at` is SQL/server write time
+- `source_updated_at` is the source device/application event time
+- when comparing web vs Kobo freshness, `source_updated_at` is the semantically
+  correct field
+
+Implication:
+
+- do not use `updated_at` for source arbitration once both web and Kobo can
+  write shared rows
+
+### Delivery timing matters
+
+- a fresh remote timestamp by itself was not enough to trigger the Kobo popup
+- the popup appeared only when the genuine web-win `ReadingState` was withheld
+  from `/sync` and first delivered on `/state` GET during book open
+
+Implication:
+
+- the server must preserve this delivery-timing behavior for genuine web wins
+
+### The old single-row plan is no longer sufficient
+
+Previous planning assumed one `reader_position` row per `(user_id, book_id)`.
+That is no longer a good fit for the intended model.
+
+Why:
+
+- web and Kobo both need to preserve their own current shared position state
+- a single shared row would force write-time clobbering
+- true read-time arbitration requires both source rows to coexist
+
+Implication:
+
+- the next migration should move `reader_position` to per-source rows
+
+## Work To Do
+
+### Step 3 prerequisite: migrate `reader_position` to per-source rows
+
+This should happen before Kobo dual-write.
 
 Target schema:
 
 - drop `uq_reader_position_user_book`
 - add `uq_reader_position_user_book_source`
-- existing rows remain valid because current rows are already single-source
 
-Code changes for the prerequisite:
+Result:
+
+- one row per `(user_id, book_id, source)`
+- web and Kobo rows can coexist for the same user/book
+
+Required code changes:
 
 - `upsert_reader_position()` should query by `(user_id, book_id, source)`
-  instead of `(user_id, book_id)`
 - Kobo-serving code should stop assuming there is at most one shared row
-- add a small helper that loads the relevant `reader_position` rows by source
-  and chooses the best candidate to hand to the existing phase-2 response logic
-- do not rebuild `choose_phase2_current_bookmark_winner()` or
-  `get_phase2_current_bookmark_response()` from scratch; they already fit this
-  direction
-- fix source freshness comparisons to use `source_updated_at` rather than
-  `updated_at`; specifically, the value passed from
+- add a small helper that loads shared rows by source and chooses the best
+  candidate row to hand to the existing phase-2 response logic
+- fix freshness comparisons so the value passed from
   `get_phase2_current_bookmark_response()` into
-  `choose_phase2_current_bookmark_winner()` should represent source time, not
-  SQL row-write time
+  `choose_phase2_current_bookmark_winner()` represents source time
+  (`source_updated_at`), not SQL row-write time (`updated_at`)
 
-Validation goal for the prerequisite:
+What should not change in this prerequisite:
 
-- web and Kobo rows can coexist for the same user/book
-- existing web-only and shared -> Kobo read paths still behave correctly after
-  the schema change
-- only after this is stable should Kobo begin writing its own
-  `reader_position(source = "kobo")` rows
+- legacy Kobo tables remain intact
+- existing shared -> Kobo response shaping logic remains intact
+- existing exact-Kobo reuse helpers remain intact
 
-### Step 3 plan: Kobo -> shared dual-write
+Validation goals:
 
-Step 3 comes after the per-source row migration above. The goal is to capture
-Kobo state into `reader_position(source = "kobo")` without changing canonical
-read behavior yet.
+- web and Kobo rows can coexist for one user/book
+- current web-reader behavior still works
+- current shared -> Kobo behavior still works
+- lab/device behavior already validated on the current feature branch should not
+  regress
+
+### Step 3: Kobo -> shared dual-write
+
+After the per-source migration is stable, have Kobo `PUT /state` also write
+`reader_position(source = "kobo")` while keeping all legacy Kobo writes.
 
 Scope:
 
-- on `PUT /v1/library/<uuid>/state`, continue writing the legacy Kobo tables
-  exactly as today
-- also upsert `reader_position` with `source = "kobo"`
-- do not change `/state` GET, `/sync`, browser restore, or winner-selection
-  policy yet
-- do not remove or weaken any legacy Kobo writes in this phase
+- continue writing the legacy Kobo tables exactly as today
+- also create or update the Kobo source row in `reader_position`
+- do not change `/state` GET, `/sync`, or browser restore policy yet
 
-Required schema details:
+Required mapping:
 
-- write the device-reported timestamp into `source_updated_at`, not `updated_at`
-- leave `updated_at` server-managed; it tracks when the row was written, not
-  the source device's own timestamp
-- write Kobo-native exact locator data under `native_locator["kobo"]`, not as
-  flat top-level JSON fields
-- use `native_locator_updates={"kobo": {...}}` so the merge logic keeps any
-  existing non-Kobo JSON data intact
-
-Expected Kobo -> shared mapping:
-
-- `doc_href <- CurrentBookmark.Location.Source` when present; this may arrive as
-  a raw spine document path, and should intentionally flow through the existing
-  `upsert_reader_position()` normalization path rather than introducing a new
-  Kobo-only normalization layer
+- `doc_href <- CurrentBookmark.Location.Source` when present
+  - this should intentionally flow through the existing
+    `upsert_reader_position()` normalization path
 - `book_progress <- CurrentBookmark.ProgressPercent / 100`
 - `doc_progress <- CurrentBookmark.ContentSourceProgressPercent / 100` when
   present
-- `source_updated_at <- device-provided reading-state timestamp already
-  preserved during PUT handling`
-- `native_locator["kobo"]` should include at least:
-  - `location_value`
-  - `location_type`
-  - `raw_source_path`
-  - `raw_progress_percent`
-  - `raw_content_source_progress_percent`
+- `source_updated_at <- device-provided reading-state timestamp`
+- `native_locator["kobo"] <- { ... exact Kobo fields ... }`
 
-Implementation note:
+Required `native_locator["kobo"]` fields:
 
-- the existing read path already expects the Kobo-native payload under
-  `native_locator["kobo"]`
-- `_build_exact_kobo_native_bookmark_response()` already reconstructs the exact
-  Kobo locator from that shape
-- Step 3 should feed that existing structure rather than inventing a new one
+- `location_value`
+- `location_type`
+- `raw_source_path`
+- `raw_progress_percent`
+- `raw_content_source_progress_percent`
 
-Step 3 assumptions after the prerequisite:
+Implementation notes:
 
-- web and Kobo rows can coexist because uniqueness is now
-  `(user_id, book_id, source)`
-- Kobo dual-write should create or update only the Kobo row
-- web rows should remain intact during Kobo PUT handling
+- write the Kobo-native payload under `native_locator["kobo"]`
+- use `native_locator_updates={"kobo": {...}}`
+- do not try to fabricate `cfi` for Kobo rows
 
-Step 3 tests:
-
-- request-level test that Kobo `PUT /state` creates or updates a
-  `reader_position` row
-- test that Kobo writes `source_updated_at` from the device timestamp rather
-  than trying to treat `updated_at` as source time
-- test that `native_locator["kobo"]` stores the exact Kobo locator payload in
-  the shape the current read path expects
-- regression test that the legacy Kobo tables are still written exactly as
-  before
-
-Step 3 exit criteria:
+Validation goals:
 
 - every Kobo PUT leaves behind a usable `reader_position(source = "kobo")` row
-- no current Kobo behavior regresses
-- real device-written shared rows have been inspected before any read-path
-  trust shift
+- the exact locator payload can round-trip through the existing Kobo reuse path
+- legacy Kobo behavior does not regress
 
-### Step 4 plan: decide how per-source rows become authoritative
+### Step 4: trust and arbitration between per-source rows
 
-Step 4 is not primarily "build new arbitration logic." Most of that logic
-already exists:
+Step 4 is not primarily about inventing new core logic. Most of the important
+pieces already exist.
+
+Already present:
 
 - `choose_phase2_current_bookmark_winner()` already handles `source == "kobo"`
-- `_build_exact_kobo_native_bookmark_response()` already round-trips exact
-  Kobo locators from `native_locator["kobo"]`
-- the main job of Step 4 is to decide how the system should arbitrate between
-  the coexisting web and Kobo rows
+- `_build_exact_kobo_native_bookmark_response()` already rebuilds exact Kobo
+  locators from `native_locator["kobo"]`
 
-This is the real architectural decision:
+What Step 4 must decide:
 
-- after the prerequisite migration, `reader_position` can hold one row per
-  source
-- Step 4 must decide how those coexisting rows are selected and trusted by each
-  consumer during the mixed-storage period
+- how read paths choose between the web row and the Kobo row
+- how that chosen shared candidate is compared against legacy `KoboReadingState`
+  during the mixed-storage period
+- when Kobo-originated shared rows become a normal first-class source rather
+  than a dormant path
 
-Options to evaluate:
+Expected shape of Step 4 work:
 
-- treat one source as canonical by default and use the other only as fallback
-- arbitrate dynamically at read time based on source freshness and policy
-- eventually decide whether legacy Kobo tables remain a backstop only or stop
-  being part of normal arbitration
+- load both `reader_position(source = "web")` and
+  `reader_position(source = "kobo")`
+- select the best shared candidate by source freshness/policy
+- pass that single candidate into the existing response-shaping path
+- keep safe fallthrough to legacy Kobo state while confidence is still being
+  built
 
-Recommended Step 4 framing:
+Validation goals:
 
-- first use the Step 3 dual-write data to observe how often web and Kobo rows
-  diverge in real usage
-- then decide how read paths should choose between those rows
-- only after that should shared Kobo rows become a broadly trusted
-  first-class source
+- `/state` GET can safely reuse exact Kobo locator data from the Kobo source row
+- shared -> Kobo behavior still respects fresher-Kobo vs fresher-web rules
+- browser behavior remains correct if the most recent shared row is Kobo-originated
+- malformed or partial `native_locator["kobo"]` data still falls through safely
 
-Step 4 should therefore focus on:
+## Short-Term Next Steps
 
-- choosing the read-time selection model between the web row and the Kobo row
-- using `source_updated_at` rather than `updated_at` when source freshness
-  matters
-- activating the already-existing exact-Kobo read path as a normal case once
-  dual-written rows are known to be reliable
-
-Step 4 tests:
-
-- `/state` GET reuses exact Kobo locator data from a dual-written
-  `reader_position(source = "kobo")` row
-- browser restore behaves correctly if the canonical shared row now reflects a
-  Kobo-originated position
-- fresher-web vs fresher-Kobo interactions stay correct once the shared row is
-  being trusted more broadly
-- partial or malformed `native_locator["kobo"]` data still falls through safely
-
-Step 4 exit criteria:
-
-- the project has an explicit answer to how coexisting web and Kobo rows are
-  selected for each consumer
-- Kobo-originated shared rows can be trusted as a first-class source without
-  losing the web row
-- only after that should any further reduction of legacy Kobo-only state be
-  considered
-
-### Why
-
-This repo auto-runs app-db migrations at startup via `cps/ub.py`, so rollback of
-code does not imply rollback of schema. Additive-only changes are safest for lab
-and canary use.
-
-### Dual-write compatibility window
-
-During early rollout:
-
-- web reader writes the new `reader_position` row
-- web reader also continues writing the legacy `bookmark.bookmark_key`
-
-Exit conditions for ending dual-write:
-
-- web restore reads from `reader_position`
-- lab Kobo consumption is stable enough to trust the new shared model
-- there is a deliberate story for handling existing legacy bookmark rows
-
-Do not allow dual-write to continue indefinitely without revisiting those exit
-conditions.
-
-### Lab rollback practice
-
-- snapshot app DB before first schema rollout
-- restore snapshot when testing older code that assumes old schema
-- do not assume a branch checkout is a database rollback
-
-## Format/Rendition Findings: EPUB vs KEPUB
-
-Matched-title results for `How to AI`, same approximate location in Chapter 11:
-
-- browser KEPUB `href` matched Kobo KEPUB `Location.Source` exactly after
-  stripping the browser fragment (`#page_...`)
-- browser EPUB `href` also matched the same Kobo KEPUB `Location.Source`
-- therefore `doc_href` is currently the strongest validated shared anchor across
-  browser EPUB, browser KEPUB, and Kobo KEPUB for at least one real title
-
-What did not match exactly:
-
-- browser KEPUB and browser EPUB `bookProgress` differed at the same rough
-  location, so `book_progress` must be treated as coarse / approximate across
-  renditions
-- browser `docProgress` did not match Kobo
-  `ContentSourceProgressPercent`, so these are not interchangeable and must
-  remain source-specific
-- browser KEPUB CFI contained `kobo.*` markers, while browser EPUB CFI did not;
-  therefore `cfi` is rendition-specific precision data, not a shared canonical
-  coordinate
-
-Current conclusion:
-
-- uniqueness on `(user_id, book_id)` is more plausible than before because
-  document-path compatibility looks good on one matched title
-- however, precise resume remains rendition-specific, so shared cross-rendition
-  resume should still be treated as approximate in v1
-- keep this as "validated on one title, not universally proven"
-
-## Browser Progress Exposure Spike
-
-Goal:
-
-- expose browser-side document/chapter-local progress in the Foliate reader
-
-Current best path:
-
-- extend the web `relocate` handler detail to include `docProgress`
-- derive it via existing `view.getCFIProgress(cfi)`
-
-Expected implementation shape:
-
-1. on `relocate`, keep current:
-   - `fraction`
-   - `cfi`
-   - `href`
-2. additionally compute:
-   - `docProgress`
-3. persist `docProgress` in the temporary bookmark JSON for inspection
-4. compare browser `href` and `docProgress` against Kobo:
-   - `Location.Source`
-   - `ContentSourceProgressPercent`
-
-### Success criteria
-
-- browser `docProgress` is stable within a chapter/document
-- browser `docProgress` resets appropriately on chapter/document change
-- browser `href` can be compared meaningfully with Kobo `Location.Source`
-- browser `docProgress` may still differ semantically from Kobo
-  `ContentSourceProgressPercent`
-
-## Deferred Future Entities
-
-Not for v1 implementation, but the shared locator model should support:
-
-- `reader_bookmark`
-- `reader_annotation`
-
-These should reuse:
-
-- `doc_href`
-- `book_progress`
-- `doc_progress`
-- `cfi`
-- `native_locator`
-
-## Immediate Next Steps
-
-1. Keep validating the web-only phase 1 behavior in lab.
-2. Design the phase 2 Kobo adapter around the forward-progress guard, not
-   timestamp-only precedence.
-3. Verify the remaining narrow fallback question: whether Kobo accepts
-   `Location.Source` without `Location.Value`.
-4. Implement the shared -> Kobo adapter with strict fallthrough to current
-   behavior when `reader_position` is missing or unusable.
-5. Only after that, consider Kobo -> shared import and full conflict handling.
-
-## Next Implementation Steps For Phase 2
-
-1. Add a small adapter/helper in `cps/kobo.py` or nearby that takes
-   `ReaderPosition` plus `KoboReadingState` and returns the existing Kobo
-   `CurrentBookmark` response shape. Keep it isolated from route logic first.
-2. Keep the existing `KoboReadingState` lookup as the baseline path, then layer
-   `reader_position` evaluation on top so phase 2 stays read-only and can
-   always fall through cleanly.
-3. Implement a small pure winner-selection helper that takes timestamps and
-   progress inputs, returns a decision plus reason, and has no DB access or
-   side effects. Compare `ReaderPosition.updated_at` against
-   `KoboReadingState.last_modified` first; only if web is fresher should
-   forward-progress be consulted. Use a named constant for the
-   forward-progress threshold rather than an inline number, so lab tuning is
-   easy.
-4. Treat ties, regressions, stale web rows, malformed rows, and missing native data as
-   non-wins; in all of those cases, return the current Kobo behavior
-   unchanged.
-5. When the shared winner is Kobo and `native_locator.kobo` is fresh, reuse the
-   stored raw Kobo location fields verbatim so the device gets an exact
-   round-trip locator. Note: this path is expected to be mostly or entirely
-   inactive in phase 2 because Kobo PUT/import is still out of scope, so add a
-   comment in code to make that expectation explicit.
-6. When the shared winner is web, do not use progress-only fallback as the
-   default path. Lab device testing showed that `ProgressPercent` without
-   `Location` can sync successfully yet reopen the book at the cover/start.
-   Instead, first try to synthesize a Kobo-native bookmark from browser
-   `reader_position` data when available:
-   `doc_href -> Location.Source`, extracted `kobo.<n>.<n>` token from `cfi` ->
-   `Location.Value`, `KoboSpan -> Location.Type`, `book_progress ->
-   ProgressPercent`, and `doc_progress -> ContentSourceProgressPercent`.
-7. Treat browser-derived Kobo locator synthesis as guarded behavior, not an
-   assumption. Only take the exact synthesized path when `reader_position`
-   provides a usable `doc_href` plus `kobo.<n>.<n>` token. Keep negative cases
-   such as short/front-matter KEPUB sections that produce no usable Kobo token.
-8. Add a separate lab experiment for the no-token case rather than hard-coding
-   the fallback policy up front. Explicitly test whether a partial `Location`
-   shape such as valid `Location.Source` with no usable Kobo token is accepted
-   by the device and resumes better than the rejected progress-only fallback.
-9. Add targeted logging for lab builds with a dedicated prefix such as
-   `[reader-sync]` around the adapter decision points: source row found or not,
-   override accepted or rejected, whether web lost on recency or progress,
-   whether a fresh remote timestamp/PT was emitted, fallback mode used, and
-   exact reason for every fallthrough.
-10. Cover the adapter with focused tests before wiring it into routes:
-   no `reader_position` row, Kobo newer than web, web newer but not ahead
-   enough, browser row with synthesizeable Kobo token, browser row with no
-   usable Kobo token, fresh Kobo-native reuse, and malformed
-   `native_locator.kobo`. Include the existing-behavior regression case where
-   missing `location_value` still omits `Location`.
-11. Update the existing request-level phase-2 route tests when the synthesized
-   bookmark path is introduced. The current `/state` and `/sync` route tests
-   assert the initial progress-only fallback shape (for example, no
-   `Location` when web wins); those assertions should flip to match the
-   synthesized-locator behavior rather than blocking the route wiring step.
-12. Only after the adapter tests pass, wire the helper into the two Kobo read
-   paths:
-   `/v1/library/<uuid>/state` GET and `/v1/library/sync` changed-state or
-   entitlement response building.
-13. Validate the behavior on the lab Kobo against at least one title already
-   used for rendition matching, confirming that:
-   newer web progress advances Kobo when a browser-derived Kobo token exists,
-   newer Kobo activity prevents stale web override even when web is farther
-   ahead numerically, and the no-token experiment is evaluated separately from
-   the exact-token path. Be prepared to seed a `reader_position` row manually
-   in the lab DB if phase-1 web writes are not yet available in the test
-   build. The progress-only fallback question is now answered "not acceptable"
-   for general use; only after exact-token behavior is validated should lab
-   testing expand to partial `Location` shapes such as `Location.Source`
-   without a usable Kobo token.
-14. After recency-first winner selection is in place, run a focused lab
-   experiment on popup behavior:
-   if web genuinely wins, try emitting a fresh remote
-   `PriorityTimestamp` / reading-state timestamp and verify whether Kobo shows
-   a meaningful "return to last page read" style popup; if Kobo wins or the
-   sources tie, keep mirroring device timestamp semantics so there is no
-   spurious popup.
-15. Leave Kobo PUT/import out of the branch until the read path is stable and
-    device-tested; phase 2 should remain strictly shared -> Kobo only, with no
-    conflict UX yet.
+1. Implement the per-source-row migration prerequisite.
+2. Add or update tests proving current paths still work with coexisting web and
+   Kobo rows.
+3. Only then implement Kobo dual-write into `reader_position(source = "kobo")`.
+4. Inspect real dual-written Kobo rows before broadening read-path trust.
+5. After that, implement Step 4 selection/trust logic for coexisting rows.
