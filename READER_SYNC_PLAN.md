@@ -309,6 +309,186 @@ Data-model implication:
 - this is a phase-3 concern, not a phase-2 blocker, and can be handled by JSON
   expansion without another schema migration
 
+### Step 3 prerequisite: move `reader_position` to per-source rows
+
+Before Kobo dual-write is added, the table should be migrated from one shared
+row per `(user_id, book_id)` to one row per `(user_id, book_id, source)`.
+
+This should happen before Step 3 rather than being deferred:
+
+- the current single-row constraint means web and Kobo would overwrite each
+  other
+- that would prevent true read-time arbitration because only the last writer
+  would survive
+- the temporary guarded-overwrite compromise would just delay the migration
+  that the design already wants
+
+Target schema:
+
+- drop `uq_reader_position_user_book`
+- add `uq_reader_position_user_book_source`
+- existing rows remain valid because current rows are already single-source
+
+Code changes for the prerequisite:
+
+- `upsert_reader_position()` should query by `(user_id, book_id, source)`
+  instead of `(user_id, book_id)`
+- Kobo-serving code should stop assuming there is at most one shared row
+- add a small helper that loads the relevant `reader_position` rows by source
+  and chooses the best candidate to hand to the existing phase-2 response logic
+- do not rebuild `choose_phase2_current_bookmark_winner()` or
+  `get_phase2_current_bookmark_response()` from scratch; they already fit this
+  direction
+- fix source freshness comparisons to use `source_updated_at` rather than
+  `updated_at`; specifically, the value passed from
+  `get_phase2_current_bookmark_response()` into
+  `choose_phase2_current_bookmark_winner()` should represent source time, not
+  SQL row-write time
+
+Validation goal for the prerequisite:
+
+- web and Kobo rows can coexist for the same user/book
+- existing web-only and shared -> Kobo read paths still behave correctly after
+  the schema change
+- only after this is stable should Kobo begin writing its own
+  `reader_position(source = "kobo")` rows
+
+### Step 3 plan: Kobo -> shared dual-write
+
+Step 3 comes after the per-source row migration above. The goal is to capture
+Kobo state into `reader_position(source = "kobo")` without changing canonical
+read behavior yet.
+
+Scope:
+
+- on `PUT /v1/library/<uuid>/state`, continue writing the legacy Kobo tables
+  exactly as today
+- also upsert `reader_position` with `source = "kobo"`
+- do not change `/state` GET, `/sync`, browser restore, or winner-selection
+  policy yet
+- do not remove or weaken any legacy Kobo writes in this phase
+
+Required schema details:
+
+- write the device-reported timestamp into `source_updated_at`, not `updated_at`
+- leave `updated_at` server-managed; it tracks when the row was written, not
+  the source device's own timestamp
+- write Kobo-native exact locator data under `native_locator["kobo"]`, not as
+  flat top-level JSON fields
+- use `native_locator_updates={"kobo": {...}}` so the merge logic keeps any
+  existing non-Kobo JSON data intact
+
+Expected Kobo -> shared mapping:
+
+- `doc_href <- CurrentBookmark.Location.Source` when present; this may arrive as
+  a raw spine document path, and should intentionally flow through the existing
+  `upsert_reader_position()` normalization path rather than introducing a new
+  Kobo-only normalization layer
+- `book_progress <- CurrentBookmark.ProgressPercent / 100`
+- `doc_progress <- CurrentBookmark.ContentSourceProgressPercent / 100` when
+  present
+- `source_updated_at <- device-provided reading-state timestamp already
+  preserved during PUT handling`
+- `native_locator["kobo"]` should include at least:
+  - `location_value`
+  - `location_type`
+  - `raw_source_path`
+  - `raw_progress_percent`
+  - `raw_content_source_progress_percent`
+
+Implementation note:
+
+- the existing read path already expects the Kobo-native payload under
+  `native_locator["kobo"]`
+- `_build_exact_kobo_native_bookmark_response()` already reconstructs the exact
+  Kobo locator from that shape
+- Step 3 should feed that existing structure rather than inventing a new one
+
+Step 3 assumptions after the prerequisite:
+
+- web and Kobo rows can coexist because uniqueness is now
+  `(user_id, book_id, source)`
+- Kobo dual-write should create or update only the Kobo row
+- web rows should remain intact during Kobo PUT handling
+
+Step 3 tests:
+
+- request-level test that Kobo `PUT /state` creates or updates a
+  `reader_position` row
+- test that Kobo writes `source_updated_at` from the device timestamp rather
+  than trying to treat `updated_at` as source time
+- test that `native_locator["kobo"]` stores the exact Kobo locator payload in
+  the shape the current read path expects
+- regression test that the legacy Kobo tables are still written exactly as
+  before
+
+Step 3 exit criteria:
+
+- every Kobo PUT leaves behind a usable `reader_position(source = "kobo")` row
+- no current Kobo behavior regresses
+- real device-written shared rows have been inspected before any read-path
+  trust shift
+
+### Step 4 plan: decide how per-source rows become authoritative
+
+Step 4 is not primarily "build new arbitration logic." Most of that logic
+already exists:
+
+- `choose_phase2_current_bookmark_winner()` already handles `source == "kobo"`
+- `_build_exact_kobo_native_bookmark_response()` already round-trips exact
+  Kobo locators from `native_locator["kobo"]`
+- the main job of Step 4 is to decide how the system should arbitrate between
+  the coexisting web and Kobo rows
+
+This is the real architectural decision:
+
+- after the prerequisite migration, `reader_position` can hold one row per
+  source
+- Step 4 must decide how those coexisting rows are selected and trusted by each
+  consumer during the mixed-storage period
+
+Options to evaluate:
+
+- treat one source as canonical by default and use the other only as fallback
+- arbitrate dynamically at read time based on source freshness and policy
+- eventually decide whether legacy Kobo tables remain a backstop only or stop
+  being part of normal arbitration
+
+Recommended Step 4 framing:
+
+- first use the Step 3 dual-write data to observe how often web and Kobo rows
+  diverge in real usage
+- then decide how read paths should choose between those rows
+- only after that should shared Kobo rows become a broadly trusted
+  first-class source
+
+Step 4 should therefore focus on:
+
+- choosing the read-time selection model between the web row and the Kobo row
+- using `source_updated_at` rather than `updated_at` when source freshness
+  matters
+- activating the already-existing exact-Kobo read path as a normal case once
+  dual-written rows are known to be reliable
+
+Step 4 tests:
+
+- `/state` GET reuses exact Kobo locator data from a dual-written
+  `reader_position(source = "kobo")` row
+- browser restore behaves correctly if the canonical shared row now reflects a
+  Kobo-originated position
+- fresher-web vs fresher-Kobo interactions stay correct once the shared row is
+  being trusted more broadly
+- partial or malformed `native_locator["kobo"]` data still falls through safely
+
+Step 4 exit criteria:
+
+- the project has an explicit answer to how coexisting web and Kobo rows are
+  selected for each consumer
+- Kobo-originated shared rows can be trusted as a first-class source without
+  losing the web row
+- only after that should any further reduction of legacy Kobo-only state be
+  considered
+
 ### Why
 
 This repo auto-runs app-db migrations at startup via `cps/ub.py`, so rollback of
