@@ -265,9 +265,19 @@ implemented and reasoned about separately.
 
 **Stage 1: choose the best shared candidate (web row vs Kobo row)**
 
-Two concrete changes. The policy question of how to handle edge cases (Kobo
-slightly fresher but far behind in progress) is left to observability data from
-the pre-work step.
+Observed failure (2026-03-16, book 117): web at 89.7% (`source_updated_at`
+05:35:45), Kobo at 86% (`source_updated_at` 05:35:53). Kobo won Stage 1 by 8
+seconds (`kobo_fresher_or_tied`). Kobo was not doing new reading — it was
+syncing existing state with a fresh timestamp. Web position was silently dropped,
+no popup was shown. Confirms that pure timestamp-wins is insufficient and that
+the popup cannot rescue a Stage 1 mistake (popup only fires for web wins).
+
+Fix: mirror Stage 2's progress-delta check in Stage 1. When Kobo is fresher by
+timestamp but web is meaningfully further ahead in `book_progress` (delta >
+`READER_POSITION_OVERRIDE_THRESHOLD`), web wins. New reason:
+`web_ahead_despite_kobo_fresher`. Implemented 2026-03-16.
+
+Two concrete changes:
 
 Change 1 — extend the web reader restore fallback:
 
