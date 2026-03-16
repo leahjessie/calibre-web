@@ -185,6 +185,37 @@ Validation goals:
 - the exact locator payload can round-trip through the existing Kobo reuse path
 - legacy Kobo behavior does not regress
 
+### Step 4 pre-work: observability before arbitration changes
+
+Before broadening shared-row trust or adjusting arbitration policy, add a debug
+surface that makes the decision tree inspectable without reading raw logs.
+
+Why first:
+
+- Step 4 edge cases (finished books, first-Kobo-row-after-web-only, web-ahead-
+  but-Kobo-fresher) are hard to reason about from logs alone
+- having a visible explanation of the selection and winner decisions turns a
+  multi-day debug loop into a single inspection
+
+Browser debug surface should show:
+
+- both shared rows (`source = "web"` and `source = "kobo"`) with key fields
+- legacy Kobo state (`KoboReadingState`) for the same book
+- selected shared candidate and the reason it was chosen
+- final winner (shared vs legacy) and the reason it won
+- a compact "popup eligibility" explanation (withheld from `/sync`? why?)
+- a direct link or inline view for the Kobo-side book/state trace if a trace
+  path is already active for the book
+
+Log changes:
+
+- include a `shared_selection_reason` field wherever the shared candidate is
+  chosen
+- include a `final_winner_reason` field wherever the Kobo response winner is
+  chosen
+- these are distinct: one explains web-vs-Kobo-shared, the other explains
+  shared-vs-legacy
+
 ### Step 4: trust and arbitration between per-source rows
 
 Step 4 is not primarily about inventing new core logic. Most of the important
@@ -198,27 +229,81 @@ Already present:
 
 What Step 4 must decide:
 
-- how read paths choose between the web row and the Kobo row
+- how read paths choose between the web row and the Kobo row (Stage 1)
 - how that chosen shared candidate is compared against legacy `KoboReadingState`
-  during the mixed-storage period
+  during the mixed-storage period (Stage 2)
 - when Kobo-originated shared rows become a normal first-class source rather
   than a dormant path
 
+These are two distinct comparisons with different semantics and should be
+implemented and reasoned about separately.
+
+**Stage 1: choose the best shared candidate (web row vs Kobo row)**
+
+Two concrete changes. The policy question of how to handle edge cases (Kobo
+slightly fresher but far behind in progress) is left to observability data from
+the pre-work step.
+
+Change 1 — extend the web reader restore fallback:
+
+Currently the book-detail page queries `source == "web"` only; if no web row
+exists it falls back to the legacy `Bookmark` table. After Step 3, a Kobo row
+may exist for books never opened in the browser. The fallback chain should
+become: web row → Kobo row → legacy `Bookmark`. This is unambiguous: resuming
+from a Kobo shared row is always better than ignoring it.
+
+Change 2 — `select_reader_position_for_kobo()` becomes active:
+
+This function already loads all sources and selects between them. Currently it
+uses pure timestamp-wins, which is fine as a baseline. Once Step 3 adds real
+Kobo rows it will start doing real work automatically. The pure-timestamp
+baseline is the starting policy; refinements should be driven by what the
+observability pre-work reveals, not by speculation.
+
+**Stage 2: compare chosen shared candidate against legacy `KoboReadingState`**
+
+The existing source-aware comparison rules apply here unchanged. The shared
+candidate is handed to the existing response-shaping path; no new logic is
+needed at this stage unless gaps are found during Step 4 pre-work observability.
+
 Expected shape of Step 4 work:
 
-- load both `reader_position(source = "web")` and
-  `reader_position(source = "kobo")`
-- select the best shared candidate by source freshness/policy
-- pass that single candidate into the existing response-shaping path
+- web restore: query web row first, fall back to Kobo row, then legacy Bookmark
+- Kobo path: `select_reader_position_for_kobo()` selects the shared candidate
+  (Stage 1); emit `shared_selection_reason`
+- pass that single candidate into the existing response-shaping path (Stage 2);
+  emit `final_winner_reason`
 - keep safe fallthrough to legacy Kobo state while confidence is still being
   built
 
 Validation goals:
 
+- web reader opens at Kobo position for books with no web row
 - `/state` GET can safely reuse exact Kobo locator data from the Kobo source row
 - shared -> Kobo behavior still respects fresher-Kobo vs fresher-web rules
 - browser behavior remains correct if the most recent shared row is Kobo-originated
 - malformed or partial `native_locator["kobo"]` data still falls through safely
+- Stage 1 and Stage 2 decisions are both visible in logs and the debug surface
+
+### Design option: per-book sync-disable flag
+
+For non-linear books (cookbooks, reference works) where position is not
+meaningful across sessions, web↔Kobo position sync may cause more harm than
+good. A per-user-per-book flag could opt individual books out entirely.
+
+When disabled:
+
+- Kobo reads from legacy `KoboReadingState` only — no shared row influence
+- web reads from `source == "web"` row only — no Kobo row fallback
+- Stage 1 and Stage 2 arbitration are both skipped
+
+Where the flag would live: a boolean column on `ReadBook` (user×book) is the
+natural fit — one column, one migration, no new relationships. Surface in the
+book detail page or reader UI.
+
+This is not required for Step 4 but worth considering before the arbitration
+logic gets complex, since it eliminates the problem for a class of books where
+sync is counterproductive.
 
 ## Short-Term Next Steps
 
@@ -227,4 +312,7 @@ Validation goals:
    Kobo rows.
 3. Only then implement Kobo dual-write into `reader_position(source = "kobo")`.
 4. Inspect real dual-written Kobo rows before broadening read-path trust.
-5. After that, implement Step 4 selection/trust logic for coexisting rows.
+5. Implement Step 4 pre-work: browser debug surface and `shared_selection_reason`
+   / `final_winner_reason` log fields.
+6. After that, implement Step 4 Stage 1 selection policy and Stage 2 trust logic
+   for coexisting rows.
