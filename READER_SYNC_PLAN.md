@@ -82,6 +82,31 @@ Implication:
 
 - the server must preserve this delivery-timing behavior for genuine web wins
 
+### Legacy data populations
+
+Two permanent populations will exist with no shared `reader_position` rows for
+a given book, even after Step 3 is fully deployed.
+
+**Kobo-history-only books:** read on Kobo before Step 3 deployment and never
+re-opened on Kobo afterward. These have reliable `KoboReadingState` data. The
+population starts large (order of 100 books in a personal library) and shrinks
+as books are re-opened, but never reaches zero for finished books. The Kobo
+legacy fallthrough is the correct and only behavior for these books.
+
+**Browser-history-only books:** read in the browser before `reader_position`
+existed, with only a legacy `Bookmark` table entry. Smaller in practice — epub.js
+quality kept browser usage low. The `Bookmark` table's upstream design is
+ambiguous; it was not clearly intended as a position store and entries are
+frequently unreliable. The browser restore fallback to `Bookmark` is best-effort
+and always was — losing it for a book is not a meaningful regression.
+
+Implication:
+
+- legacy fallthrough is a permanent first-class path, not a transitional crutch
+- the Kobo legacy path is the high-stakes concern; the browser legacy path is
+  best-effort
+- these populations are the primary reason a global config gate matters
+
 ### The old single-row plan is no longer sufficient
 
 Previous planning assumed one `reader_position` row per `(user_id, book_id)`.
@@ -266,15 +291,25 @@ The existing source-aware comparison rules apply here unchanged. The shared
 candidate is handed to the existing response-shaping path; no new logic is
 needed at this stage unless gaps are found during Step 4 pre-work observability.
 
+Note on Kobo-shared vs legacy in Stage 2: for books first opened on Kobo after
+Step 3, the Kobo shared row and legacy `KoboReadingState` are written together
+on every PUT and will be nearly identical — the comparison between them is
+redundant for those books. However, many books will not be opened on Kobo after
+Step 3 (the Kobo-history-only population), so Stage 2 remains important: for
+those books there is no Kobo shared row, Stage 1 picks the web row or nothing,
+and Stage 2's web-vs-legacy comparison is the only thing standing between the
+user and a wrong position. That path already exists and is tested.
+
 Expected shape of Step 4 work:
 
+- require `ENABLE_CROSS_SOURCE_POSITION_SYNC` config flag to be on; all
+  arbitration below is skipped when it is off
 - web restore: query web row first, fall back to Kobo row, then legacy Bookmark
 - Kobo path: `select_reader_position_for_kobo()` selects the shared candidate
   (Stage 1); emit `shared_selection_reason`
 - pass that single candidate into the existing response-shaping path (Stage 2);
   emit `final_winner_reason`
-- keep safe fallthrough to legacy Kobo state while confidence is still being
-  built
+- legacy Kobo fallthrough is always available for books with no shared rows
 
 Validation goals:
 
@@ -285,25 +320,30 @@ Validation goals:
 - malformed or partial `native_locator["kobo"]` data still falls through safely
 - Stage 1 and Stage 2 decisions are both visible in logs and the debug surface
 
-### Design option: per-book sync-disable flag
+### Config gate and per-book cross-source position flag
+
+**Global config gate (required before Step 4 ships):**
+
+A feature flag (e.g. `ENABLE_CROSS_SOURCE_POSITION_SYNC`) that disables all
+shared-row arbitration globally. When off:
+
+- Kobo reads from legacy `KoboReadingState` only
+- web reads from `source == "web"` row only, falling back to legacy `Bookmark`
+- `select_reader_position_for_kobo()` and Stage 2 arbitration are both skipped
+
+This is the ops safety switch. If arbitration logic goes wrong, it can be turned
+off without touching per-book data. Primarily protects the Kobo-history-only
+population, which has reliable legacy data and must not be corrupted by a bad
+arbitration decision. Should default to off until Step 4 is validated.
+
+**Per-book flag (optional refinement, requires a migration):**
 
 For non-linear books (cookbooks, reference works) where position is not
-meaningful across sessions, web↔Kobo position sync may cause more harm than
-good. A per-user-per-book flag could opt individual books out entirely.
-
-When disabled:
-
-- Kobo reads from legacy `KoboReadingState` only — no shared row influence
-- web reads from `source == "web"` row only — no Kobo row fallback
-- Stage 1 and Stage 2 arbitration are both skipped
-
-Where the flag would live: a boolean column on `ReadBook` (user×book) is the
-natural fit — one column, one migration, no new relationships. Surface in the
-book detail page or reader UI.
-
-This is not required for Step 4 but worth considering before the arbitration
-logic gets complex, since it eliminates the problem for a class of books where
-sync is counterproductive.
+meaningful across sessions. A boolean column on `ReadBook` (user×book) — one
+column, one migration, no new relationships. When set, same effect as the global
+gate but scoped to that book. Not required for Step 4 but worth adding before
+the arbitration logic gets complex, since it eliminates the problem for a class
+of books where cross-source position tracking is counterproductive.
 
 ## Short-Term Next Steps
 
@@ -314,5 +354,6 @@ sync is counterproductive.
 4. Inspect real dual-written Kobo rows before broadening read-path trust.
 5. Implement Step 4 pre-work: browser debug surface and `shared_selection_reason`
    / `final_winner_reason` log fields.
-6. After that, implement Step 4 Stage 1 selection policy and Stage 2 trust logic
-   for coexisting rows.
+6. Add `ENABLE_CROSS_SOURCE_POSITION_SYNC` config gate (off by default).
+7. Implement Step 4 Stage 1 and Stage 2 changes behind the gate; enable after
+   validation.
