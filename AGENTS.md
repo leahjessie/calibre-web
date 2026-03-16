@@ -11,6 +11,7 @@ Upstream maintenance happens as time allows — local fixes and features are car
   run/     — live launchd service; always on run/stable (default) or run/canary
   meta/    — build/deploy scripts on PATH; orphan branch, no code
   lab/     — test env with separate DB and second Kobo device
+  build/   - worktree where builds are merged
 ```
 
 ## Branch Taxonomy
@@ -29,7 +30,8 @@ Upstream maintenance happens as time allows — local fixes and features are car
 
 **Key rules:**
 - Never commit to `master`
-- Never edit `run/*` branches directly — always rebuild via `build.sh`
+- Never edit `run/*` branches directly — always rebuild via `build.sh
+- Unless specified /necessary always base new branches of branch `base`. Fetch and merge upstrea/master into master and then rebase onto base first. 
 - Every `bug/` and `feat/` branch can run pytest without a build step
 
 ## Running Tests
@@ -110,6 +112,13 @@ launchd stdout/stderr (lab): `~/Library/Logs/calibre-web-lab.stdout.log`, `calib
 | App database (lab) | `~/.calibre-web/lab/` |
 | Service port (run) | 8083 (local), 8084 (Tailscale HTTPS) |
 | Service port (lab) | 8085 |
+
+Always open SQLite databases read-only unless deliberately writing:
+
+```bash
+sqlite3 --readonly ~/.calibre-web/run/app.db "SELECT ..."
+sqlite3 --readonly ~/.calibre-web/lab/app.db "SELECT ..."
+```
 
 ## Kobo Devices
 
