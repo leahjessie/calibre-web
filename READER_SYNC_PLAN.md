@@ -173,6 +173,11 @@ Implementation notes:
 - write the Kobo-native payload under `native_locator["kobo"]`
 - use `native_locator_updates={"kobo": {...}}`
 - do not try to fabricate `cfi` for Kobo rows
+- current Step 3 fallback behavior can use server time for `source_updated_at` if
+  neither Kobo `LastModified` value parses
+- that is acceptable for this write-only phase, but it should be revisited before
+  Step 4 broadens trust/arbitration because freshness comparison uses
+  `reader_updated_at` vs `kobo_last_modified`
 
 Validation goals:
 
