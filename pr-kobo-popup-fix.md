@@ -25,17 +25,16 @@ The protocol uses two timestamp fields on `KoboReadingState`:
 **`LastModified` (LM)** is a write timestamp. The device generates it locally and sends it in every
 PUT request body. The server is expected to store it and return it in subsequent GET responses. Each
 sub-record (bookmark, statistics, read status) has its own LM; the parent `KoboReadingState` row
-carries the most recent of these as its own LM. PT lives only on `KoboReadingState` — there is no
-PT on sub-records.
+carries the most recent of these as its own LM.
 
 **`PriorityTimestamp` (PT)** is the conflict-detection field, on the parent `KoboReadingState` only.
 Based on observed behavior, after each GET the device stores the PT it received. On the next GET, if
 the returned PT is newer than the stored one, the device concludes another client updated the book
 and shows the "Return to last page read?" popup.
 
-On the official Kobo cloud, PT is always equal to LM — the server sets PT = LM when saving state.
-Because LM originates from the device itself, the device always receives back a timestamp it
-recognizes, PT never advances unexpectedly, and the popup never fires spuriously.
+Based on observed official Kobo cloud traffic, PT appears to always equal LM — the server sets
+PT = LM when saving state. Because LM originates from the device itself, the device always receives
+back a timestamp it recognizes, PT never advances unexpectedly, and the popup never fires spuriously.
 
 ## Root cause
 
