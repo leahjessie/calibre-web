@@ -27,17 +27,14 @@ Observed via proxy: official Kobo cloud appears to always return PT = LM = the d
 
 Our server was stamping PT with `datetime.now()` on every PUT. When the device next did a GET it saw
 a server-generated PT newer than its last confirmed one — triggering the popup despite no real
-conflict or change on another client. If a session ended with a GET the device would confirm the new PT and the next open was
-fine; if it ended with a PUT, the next GET would show the mismatch and trigger the popup — which is
-why it was intermittent.
+conflict or change on another client. If a session ended with a GET the device would confirm the new PT and the next open was fine; if it ended with a PUT, the next GET would show the mismatch and trigger the popup — which is why it was intermittent.
 
 ## Fix
 
 **Commit 2 (core fix):** Read `LastModified` from the PUT request body and use it as both LM and PT
 for all state saved in that request. The subsequent GET returns the device's own timestamp back,
-eliminating the mismatch. When state is changed outside a Kobo PUT (e.g. marking a book read in the
-web UI), the flush hook falls back to `datetime.now()`, so PT still advances and the device will
-correctly see a newer PT and show the popup. Also fixes a minor issue where `book_read.last_modified`
+eliminating the mismatch. When state is changed outside a Kobo PUT, the flush hook falls back to `datetime.now()`, so PT
+still advances as before. Also fixes a minor issue where `book_read.last_modified`
 was being written on every PUT even when read status hadn't changed.
 
 **Commit 1 (prerequisite):** Two things that would otherwise undermine commit 2:
