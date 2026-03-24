@@ -36,18 +36,19 @@ from the device created a fresh server-side timestamp. When the device later did
 newer than the one it had last confirmed — and showed the popup — even though the data itself was
 unchanged.
 
-**Why this was intermittent, not constant:** The Kobo only persists state to flash storage from GET
-responses. During an active reading session the device interleaves PUTs (progress updates) with GETs,
-and each GET confirms the latest server-generated PT to flash. If the session ended cleanly with a
-GET, the next open would see a matching PT and no popup. The popup occurred specifically when the
-device went to sleep after a PUT without a final confirming GET — flash still held the PT from the
-previous GET, the next open returned a newer server PT, triggering the conflict. This made it
-dependent on sleep timing rather than reading behavior, which is why it appeared random.
+**Why this was intermittent, not constant:** Based on observed behavior, the device appears to only
+persist PT from GET responses — PUT response bodies don't seem to update its confirmed-PT baseline.
+During an active reading session the device interleaves PUTs with GETs; if a session ended with a GET,
+the next open would see a matching PT and no popup. The most likely explanation for the intermittency
+is that the popup fired when the device went to sleep after a PUT without a final confirming GET,
+leaving the flash PT behind the server's. But we can't confirm the exact flash/memory mechanics from
+the outside.
 
-**Comparison with official Kobo cloud (captured via proxy):** The official server does not generate
-server-side timestamps. It stores the device's own `LastModified` value and returns it as both LM and
-PT in GET responses. Because the device always gets back a timestamp it generated itself, PT never
-appears newer than expected, and the popup never fires — regardless of sleep timing.
+**Comparison with official Kobo cloud (captured via proxy):** Observed via HTTP proxy: the official
+server returns the device's own `LastModified` value as both LM and PT in GET responses, rather than a
+server-generated timestamp. PUT responses contain no LM or PT in `UpdateResults`. Because the device
+always gets back a timestamp it generated itself, PT never appears newer than expected, and the popup
+never fires.
 
 ## Fix
 
