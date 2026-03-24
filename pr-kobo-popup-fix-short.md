@@ -17,7 +17,8 @@ Two relevant timestamp fields on `KoboReadingState`:
   sub-record (bookmark, statistics, read status) and propagated to the parent row.
 - **`PriorityTimestamp` (PT)** — conflict-detection field on the parent row only. Based on observed
   behavior, the device stores the PT from each GET response. If the next GET returns a newer PT, the
-  device assumes another client made changes and shows the popup.
+  device assumes another client made changes and shows the popup (e.g. the legitimate case would be
+  marking a book as read in the web UI while the device is offline).
 
 Observed via proxy: official Kobo cloud appears to always return PT = LM = the device's own
 `LastModified`, so the device always gets back a timestamp it recognizes.
