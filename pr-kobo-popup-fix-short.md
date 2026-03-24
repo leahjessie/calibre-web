@@ -17,8 +17,8 @@ Two relevant timestamp fields on `KoboReadingState`:
   sub-record (bookmark, statistics, read status) and propagated to the parent row.
 - **`PriorityTimestamp` (PT)** — conflict-detection field on the parent row only. Based on observed
   behavior, the device stores the PT from each GET response. If the next GET returns a newer PT, the
-  device assumes another client made changes and shows the popup (e.g. the legitimate case would be
-  marking a book as read in the web UI while the device is offline).
+  device assumes another client made changes and could show the popup (e.g. the intended use case is
+  syncing position across a Kobo device and the Kobo app — not something calibre-web supports.)
 
 Observed via proxy: official Kobo cloud appears to always return PT = LM = the device's own
 `LastModified`, so the device always gets back a timestamp it recognizes.
@@ -45,4 +45,4 @@ was being written on every PUT even when read status hadn't changed.
 - Commit `2d4ca23d` added LM and PT to the PUT response `UpdateResults`, attempting to let the
   device confirm the new PT without a GET. Based on observed behavior this doesn't work — the device
   appears to ignore PUT response bodies for state persistence — and it matches neither official cloud
-  behavior nor the fix's approach. Reverted.
+  behavior nor the fix's approach.
