@@ -17,9 +17,20 @@ from the device created a fresh server-side timestamp. When the device later did
 newer than the one it had last confirmed — and showed the popup — even though the data itself was
 unchanged.
 
-**Comparison with official Kobo cloud (captured via proxy):** The official server does not generate
-its own timestamps. It echoes the device's own `LastModified` value back in the GET response. The
-device recognizes its own timestamp and sees no conflict.
+**Why this was intermittent, not constant:** The Kobo only persists state to flash storage from GET
+responses. During an active reading session the device interleaves PUTs (progress updates) with GETs,
+and each GET confirms the latest server-generated PT to flash. If the session ended cleanly with a
+GET, the next open would see a matching PT and no popup. The popup occurred specifically when the
+device went to sleep after a PUT without a final confirming GET — flash still held the PT from the
+previous GET, the next open returned a newer server PT, triggering the conflict. This made it
+dependent on sleep timing rather than reading behavior, which is why it appeared random.
+
+**Comparison with official Kobo cloud (captured via proxy):** Each sub-record (bookmark, statistics,
+status) has its own `LastModified` field, which the device includes in PUT requests. The server stores
+this and uses it to set PT on the parent `KoboReadingState` row — so PT is always equal to the most
+recent sub-record LM. The official cloud does not generate server-side timestamps: it stores and
+echoes back the device's own `LastModified` value as both LM and PT. The device recognizes its own
+timestamp and sees no conflict, regardless of sleep timing.
 
 ## Fix
 
