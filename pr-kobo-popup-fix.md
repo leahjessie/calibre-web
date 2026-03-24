@@ -6,6 +6,25 @@ When syncing a Kobo device, users see a "Do you want to return to the last page 
 though they have been reading on that device the whole time and no other device is involved. The popup
 is disruptive and the answer is always "no" — the device already has the correct position.
 
+## Background: the two timestamp fields
+
+The reading state protocol uses two timestamp fields on `KoboReadingState`, and understanding them
+is necessary to follow the root cause.
+
+**`LastModified` (LM)** is a write timestamp. The device generates it locally and sends it in every
+PUT `/state` request body. The server is expected to store it and return it in subsequent GET
+responses. Each sub-record (bookmark, statistics, read status) has its own LM; the parent
+`KoboReadingState` row carries the most recent of these as its own LM.
+
+**`PriorityTimestamp` (PT)** is the conflict-detection field. After each GET, the device remembers
+the PT it received and persists it to flash storage. On the next GET, if the returned PT is newer
+than the flash-persisted one, the device concludes that another client updated the book and shows the
+"Return to last page read?" popup.
+
+On the official Kobo cloud, PT is always equal to LM — the server sets PT = LM when saving state.
+Because LM originates from the device itself, the device always receives back a timestamp it
+recognizes, PT never advances unexpectedly, and the popup never fires spuriously.
+
 ## Root cause
 
 The popup is purely timestamp-driven. The Kobo compares the `PriorityTimestamp` (PT) it receives in
@@ -25,12 +44,10 @@ device went to sleep after a PUT without a final confirming GET — flash still 
 previous GET, the next open returned a newer server PT, triggering the conflict. This made it
 dependent on sleep timing rather than reading behavior, which is why it appeared random.
 
-**Comparison with official Kobo cloud (captured via proxy):** Each sub-record (bookmark, statistics,
-status) has its own `LastModified` field, which the device includes in PUT requests. The server stores
-this and uses it to set PT on the parent `KoboReadingState` row — so PT is always equal to the most
-recent sub-record LM. The official cloud does not generate server-side timestamps: it stores and
-echoes back the device's own `LastModified` value as both LM and PT. The device recognizes its own
-timestamp and sees no conflict, regardless of sleep timing.
+**Comparison with official Kobo cloud (captured via proxy):** The official server does not generate
+server-side timestamps. It stores the device's own `LastModified` value and returns it as both LM and
+PT in GET responses. Because the device always gets back a timestamp it generated itself, PT never
+appears newer than expected, and the popup never fires — regardless of sleep timing.
 
 ## Fix
 
