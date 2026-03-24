@@ -73,9 +73,6 @@ request_lm = datetime.strptime(lm_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=time
 g.kobo_reading_state_lm = request_lm
 ```
 
-The `receive_before_flush` SQLAlchemy event hook then uses this value (falling back to
-`datetime.now()` for non-Kobo writes, so web UI updates are unaffected).
-
 This also fixes a minor logic issue in status handling: `book_read.last_modified` was being set on
 every PUT regardless of whether the status actually changed. It now only updates when the status
 changes, matching official cloud behavior.
