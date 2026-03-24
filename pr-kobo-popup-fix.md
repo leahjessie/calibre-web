@@ -50,10 +50,8 @@ unchanged.
 **Why this was intermittent, not constant:** Based on observed behavior, the device appears to only
 persist PT from GET responses — PUT response bodies don't seem to update its confirmed-PT baseline.
 During an active reading session the device interleaves PUTs with GETs; if a session ended with a GET,
-the next open would see a matching PT and no popup. The most likely explanation for the intermittency
-is that the popup fired when the device went to sleep after a PUT without a final confirming GET,
-leaving the flash PT behind the server's. But we can't confirm the exact flash/memory mechanics from
-the outside.
+the next open would see a matching PT and no popup. If it ended with a PUT, the next GET would return
+a newer server-generated PT than the device had last confirmed, triggering the popup.
 
 **Comparison with official Kobo cloud (captured via proxy):** Observed via HTTP proxy: the official
 server returns the device's own `LastModified` value as both LM and PT in GET responses, rather than a
