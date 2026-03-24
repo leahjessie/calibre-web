@@ -8,8 +8,8 @@ they've only been reading on that one device. The answer is always "no" — the 
 ## Background
 
 The device uses `GET /v1/library/<uuid>/state` to fetch reading state when opening a book, and `PUT`
-to push progress updates while reading. A typical session is GET → PUT → PUT → ... → (possibly a
-final GET before sleep). The popup decision happens on GET.
+to push progress updates while reading. GETs and PUTs are interspersed during a session; which one the session ends on appears to vary.
+The popup decision happens on GET.
 
 Two relevant timestamp fields on `KoboReadingState`:
 
