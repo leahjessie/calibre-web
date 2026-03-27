@@ -33,8 +33,7 @@ conflict or change on another client. If a session ended with a GET the device w
 
 **Commit 2 (core fix):** Read `LastModified` from the PUT request body and use it as both LM and PT
 for all state saved in that request. The subsequent GET returns the device's own timestamp back,
-eliminating the mismatch. When state is changed outside a Kobo PUT, the flush hook falls back to `datetime.now()`, so PT
-still advances as before. Also fixes a minor issue where `book_read.last_modified`
+eliminating the mismatch. When state is changed outside a Kobo PUT, the flush hook falls back to `datetime.now()`, so PT still advances as before. Also fixes a minor issue where `book_read.last_modified`
 was being written on every PUT even when read status hadn't changed.
 
 **Commit 1 (prerequisite):** Two things that would otherwise undermine commit 2:
@@ -42,7 +41,8 @@ was being written on every PUT even when read status hadn't changed.
 - `priority_timestamp` had its own `onupdate=datetime.now()` independent of LM, so PT and LM could
   drift apart — which is itself a popup trigger. Removed `onupdate` from PT; the flush hook now sets
   both fields together.
-- Commit `2d4ca23d` added LM and PT to the PUT response `UpdateResults`, attempting to let the
-  device confirm the new PT without a GET. Based on observed behavior this doesn't work — the device
-  appears to ignore PUT response bodies for state persistence — and it matches neither official cloud
-  behavior nor the fix's approach.
+- Commit `2d4ca23d` added LM and PT to the PUT response `UpdateResults` to let the device confirm the
+    new PT without a GET. Based on observed behavior, that does not appear to work. The device seems
+    not to persist reading-state timestamps from PUT responses. This change removes that response data
+    again and instead keeps PT/LM aligned through the normal GET path, matching observed official Kobo
+    cloud behavior.
