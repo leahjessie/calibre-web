@@ -1,5 +1,13 @@
 # Reader/Kobo Position Sync Plan
 
+> **Status as of 2026-05-21:** Most of this plan has shipped via `feat/epub-reader-foliate`
+> (running in `run/stable`). Per-source `reader_position` rows, Kobo dual-write on PUT,
+> Stage 1 and Stage 2 web-vs-Kobo arbitration, the web reader Kobo resume popup, the
+> observability endpoints (`/ajax/reading-state-debug/<book_id>` and reader-sync log),
+> and the `config_kobo_sync_reading_position` gate are all live. The rest of this doc
+> is historical design context — check **Short-Term Next Steps** at the bottom for
+> anything genuinely open.
+
 ## Current State
 
 This note tracks the current state of reader/Kobo position sync work and the
@@ -209,6 +217,54 @@ Validation goals:
 - every Kobo PUT leaves behind a usable `reader_position(source = "kobo")` row
 - the exact locator payload can round-trip through the existing Kobo reuse path
 - legacy Kobo behavior does not regress
+
+### Step 4 pre-work: web reader resume popup
+
+A browser-side analog to the Kobo position-change popup, giving the user explicit
+control when Kobo has a meaningfully different (ahead) position.
+
+**Trigger rules (Option B — arbitration-first):**
+
+- Run Stage 1 (`select_reader_position_for_kobo`) on the web and Kobo shared rows.
+- If Kobo wins Stage 1 AND Kobo's `book_progress` exceeds the web row's by more
+  than `READER_POSITION_OVERRIDE_THRESHOLD` (2%), show the popup.
+- If web wins Stage 1, open silently at the web position — no conflict to surface.
+- If no web row exists (book never opened in browser), silently use the Kobo
+  position as the initial location — no popup, no conflict.
+
+**Symmetry with the Kobo popup:**
+
+- Kobo popup fires when the server has a newer (web-won) position to offer.
+- Web popup fires when Kobo has a meaningfully ahead position to offer.
+- Each popup fires on the other device's Stage 1 win — complementary, not redundant.
+
+**What the reader opens at:**
+
+The reader always opens at the web's own last position (or legacy Bookmark
+fallback). The popup is a non-silent offer to jump, not a silent relocation.
+This mirrors Kobo: Kobo opens at its own last position and then offers to jump.
+
+**Popup contents (minimal first version):**
+
+- Source label: "Kobo"
+- Percentage: e.g. "67%"
+- Time since last update: e.g. "3h ago" (computed from `source_updated_at`)
+- Two actions: "Jump there" / "Stay here"
+- Jump calls `view.goToFraction(koboOffer.fraction)` and dismisses.
+- Stay dismisses without navigating.
+- No persistence, no per-book preference, no chapter name — deferred.
+
+**Server change:**
+
+`read_book` in `web.py` computes an optional `kobo_offer` dict
+`{fraction, source_updated_at}` and passes it to the template alongside the
+existing `bookmark`. The `calibre-config` JSON gains a `koboOffer` key (null
+when not applicable).
+
+**Client change:**
+
+After position restore completes in `epub.js`, check `calibre.koboOffer`. If
+present, render a fixed-position banner and wire up the two buttons.
 
 ### Step 4 pre-work: observability before arbitration changes
 

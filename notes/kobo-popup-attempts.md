@@ -79,6 +79,8 @@ Kobo cloud."* Adding LM/PT to the PUT response is now known to be wrong.
 
 ## What worked — `bug/kobo-popup-v2` (deployed 2026-03-10)
 
+Also submitted upstream as [janeczku/calibre-web#3607](https://github.com/janeczku/calibre-web/pull/3607).
+
 Two commits:
 
 1. `8bd6ee7e`: keep `PT == LM` always; drop `LM`/`PT` from PUT response to match
