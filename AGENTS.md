@@ -22,17 +22,38 @@ Upstream maintenance happens as time allows — local fixes and features are car
 | `base` | test infrastructure + graduated tests; base for all dev work |
 | `bug/xxx` | local fix + tests — always rebases onto base |
 | `feat/xxx` | feature work + tests — always rebases onto base |
-| `pr/xxx` | clean branch off master for upstream PR submission |
-| `run/stable` | curated deployed build — script output, never edit directly |
-| `run/canary` | cutting-edge deployed build — script output, never edit directly |
-| `debug/xxx` | temporary instrumentation branch — logging without fixes; disposable |
+| `debug/xxx` | logging-only instrumentation branch (see hygiene rule below); disposable |
+| `pr/xxx`, `ref-pr/xxx` | branches with open upstream PRs — kept around even when stalled, in case the PR ever gets traction |
+| `parked/xxx` | complete, working code that's just not needed right now (e.g. `parked/thumbnail-efficiency`); revivable |
+| `archive/<original-prefix>/xxx` | superseded / historical branches kept for "what we tried" context (e.g. `archive/bug/kobo-popup`); not revivable |
+| `backup/xxx` | safety net after a destructive operation (rebase, branch reset). Delete after a few weeks of confidence. |
+| `run/stable` | proven deployed build — script output, never edit directly |
+| `run/canary` | stable + standing debug + currently-investigated experimental work — script output |
+| `run/lab/standard` | canary + lab-only branches (e.g. `feat/lab-flag`) — script output |
 | `meta` | orphan: build/deploy scripts and WORKFLOW.md |
 
 **Key rules:**
 - Never commit to `master`
-- Never edit `run/*` branches directly — always rebuild via `build.sh
-- Unless specified /necessary always base new branches of branch `base`. Fetch and merge upstrea/master into master and then rebase onto base first. 
-- Every `bug/` and `feat/` branch can run pytest without a build step
+- Never edit `run/*` branches directly — always rebuild via `build.sh`
+- Unless specified / necessary, always base new branches off `base`. Fetch and merge `upstream/master` into `master`, then rebase onto `base` first.
+- Every `bug/` and `feat/` branch can run pytest without a build step.
+- **`debug/` hygiene:** debug branches contain ONLY logging/tracing code, never functional changes. If a debug branch grows feature work, extract it to a `feat/*` branch. (Violated historically by `debug/kobo-store-reading-state-locator-logging`; surgically corrected 2026-05-21.)
+- **`archive/`:** for branches superseded by a different approach or no longer relevant. Keep the original prefix nested under `archive/` so the original intent (bug fix vs debug vs feature) is preserved.
+- Do not push fixes upstream to janeczku/calibre-web — upstream is too quiet for the round-trip to pay off. The patches-on-top build is the destination.
+
+## Profile Layering
+
+Profiles in `meta/profiles/` are stacked, conceptually:
+
+```
+stable  = proven baseline                          (run/stable, deploys to run/)
+canary  = stable + standing debug branches + experimental  (run/canary, manual deploy)
+lab     = canary + lab-only branches               (run/lab/standard, deploys to lab/)
+```
+
+When no investigation is in flight, `canary` == `stable` + the two standing debug branches. New experimental work appends below the `# Experimental` marker in `canary.conf`.
+
+**Branch order matters in profiles:** `feat/epub-reader-foliate` must merge before `bug/kobo-popup-v2` because foliate contains a refactor of `cps/kobo.py` reading-state queries that popup-v2 layers on top of. Reversing produces real conflicts. Don't reorder without understanding the kobo.py reading-state-response evolution.
 
 ## Running Tests
 
