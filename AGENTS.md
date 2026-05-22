@@ -24,7 +24,7 @@ Upstream maintenance happens as time allows — local fixes and features are car
 | `feat/xxx` | feature work + tests — always rebases onto base |
 | `debug/xxx` | logging-only instrumentation branch (see hygiene rule below); disposable |
 | `pr/xxx`, `ref-pr/xxx` | branches with open upstream PRs — kept around even when stalled, in case the PR ever gets traction |
-| `parked/xxx` | complete, working code that's just not needed right now (e.g. `parked/thumbnail-efficiency`); revivable |
+| `parked/xxx` | complete, working code that's just not needed right now (e.g. `parked/thumbnail-efficiency`); kept as a *branch* (not an archive tag) so it stays visible in `git branch` as a reminder. See `notes/parked-branches.md` for what's currently parked and why. |
 | `backup/xxx` | safety net after a destructive operation (rebase, branch reset). Delete after a few weeks of confidence. |
 | `run/stable` | proven deployed build — script output, never edit directly |
 | `run/canary` | stable + standing debug + currently-investigated experimental work — script output |
