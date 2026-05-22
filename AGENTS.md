@@ -25,7 +25,6 @@ Upstream maintenance happens as time allows — local fixes and features are car
 | `debug/xxx` | logging-only instrumentation branch (see hygiene rule below); disposable |
 | `pr/xxx`, `ref-pr/xxx` | branches with open upstream PRs — kept around even when stalled, in case the PR ever gets traction |
 | `parked/xxx` | complete, working code that's just not needed right now (e.g. `parked/thumbnail-efficiency`); revivable |
-| `archive/<original-prefix>/xxx` | superseded / historical branches kept for "what we tried" context (e.g. `archive/bug/kobo-popup`); not revivable |
 | `backup/xxx` | safety net after a destructive operation (rebase, branch reset). Delete after a few weeks of confidence. |
 | `run/stable` | proven deployed build — script output, never edit directly |
 | `run/canary` | stable + standing debug + currently-investigated experimental work — script output |
@@ -38,8 +37,24 @@ Upstream maintenance happens as time allows — local fixes and features are car
 - Unless specified / necessary, always base new branches off `base`. Fetch and merge `upstream/master` into `master`, then rebase onto `base` first.
 - Every `bug/` and `feat/` branch can run pytest without a build step.
 - **`debug/` hygiene:** debug branches contain ONLY logging/tracing code, never functional changes. If a debug branch grows feature work, extract it to a `feat/*` branch. (Violated historically by `debug/kobo-store-reading-state-locator-logging`; surgically corrected 2026-05-21.)
-- **`archive/`:** for branches superseded by a different approach or no longer relevant. Keep the original prefix nested under `archive/` so the original intent (bug fix vs debug vs feature) is preserved.
 - Do not push fixes upstream to janeczku/calibre-web — upstream is too quiet for the round-trip to pay off. The patches-on-top build is the destination.
+
+## Tag Taxonomy
+
+| Tag | Purpose |
+|--------|---------|
+| `archive/<original-prefix>/xxx` | superseded / historical work kept for "what we tried" context. Annotated tag — the message explains what was tried and why it didn't ship. Original branch is deleted. |
+
+**Why tags, not branches:** archived work shouldn't clutter `git branch` output or imply it's still a development surface. Annotated tags hold the code state *and* a paragraph of context, live in their own namespace (`git tag --list 'archive/*'`), and can be resurrected as a branch in one command (`git branch revive archive/bug/foo`) if needed. Nested original prefix (`archive/bug/...`, `archive/debug/...`, `archive/feat/...`) preserves intent semantics.
+
+Recover an archived item:
+```bash
+git show archive/bug/<name>          # tag message + commit + diff
+git checkout archive/bug/<name>      # browse the code (detached HEAD)
+git branch <name> archive/bug/<name> # resurrect as a branch
+```
+
+Narrative investigation histories live in `notes/` (e.g. `notes/kobo-popup-attempts.md`), cross-referencing the tags.
 
 ## Profile Layering
 
