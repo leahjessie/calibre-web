@@ -10,7 +10,7 @@
 set -euo pipefail
 
 REPO="readest/foliate-js"
-COMMIT="81e37d2a84ed36694df521883b51953ef76a7d6e"
+COMMIT="3c597a6dc5632b157cebd363e03f8ae33df516a1"
 
 # Destination relative to the calibre-web dev worktree
 DEST="$HOME/Developer/calibre-web/dev/cps/static/js/libs/foliate-js"
