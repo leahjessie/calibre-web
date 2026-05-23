@@ -11,7 +11,13 @@
 
 User-perceived problem: annotations on the Kobo device chronically disappear, which has suppressed the user's annotating behavior to the point of barely using the feature. The root causes turn out to be three distinct loss mechanisms (shelf-move/toggle archive-readd, polish + kepub regeneration, and metadata-edit-triggered redownload — all detailed below). All three converge on the same conclusion: device-side annotation state is fragile, and CW-side capture is the only durable store. The planned project addresses all three *and* surfaces the captured annotations somewhere durable and useful (CW DB + Hardcover Journal).
 
-Importantly: empirical work on 2026-05-22 confirmed that Kobo's cloud retains every annotation the device has ever pushed, even after device-local wipes. So the "lost" annotations are recoverable — 39 annotations across 18 books in the user's main library, retrievable today with a one-shot script. Phase 1 backfill captures all of it.
+Importantly: empirical work on 2026-05-22 confirmed that Kobo's cloud retains annotations across device-local wipes — at least within our observation window (~1 year, oldest recoverable annotations are from May 2025). 39 annotations across 18 books in the user's main library are retrievable today with a one-shot script. Phase 1 backfill captures all of it.
+
+**Two important nuances:**
+
+1. **Retention is "observed-1-year-minimum," not proven indefinite.** Kobo doesn't document their retention policy. Annotations from beyond ~1 year haven't been tested (the user's Kobo usage doesn't extend that far back). For *historical recovery* the observed window covers basically everything that ever existed. For *future durability* — the larger concern — we're trusting that Kobo continues to keep annotations as they have been. Phase 1 is time-sensitive in that any delay risks more annotations aging out under whatever real retention policy applies. See § "Retention + endpoint uncertainty" below for more.
+
+2. **The small annotation count is itself a symptom.** The user stopped annotating freely because annotations appeared to disappear. Self-limiting behavior is the most insidious usability damage — no error message, just modified behavior. Phase 1 inverts that loop: once capture is reliable and surfacing is rich (foliate + Hardcover), the cost of annotating drops and the value goes up. The *future* annotation volume is where Phase 1's value compounds; historical recovery is a one-time bonus.
 
 Secondary motivation: the foliate-based CW web reader is becoming a real reading surface (replacing dead epub.js v0.3). It needs to participate in annotation state, not just display content.
 
@@ -224,14 +230,23 @@ A read-only CW handler that GETs from cloud and stores to `reader_annotation` ca
 
 ### Empirical scale of recovery
 
-Ran `kobo-cloud-annotations-dump.sh` against main library on 2026-05-22:
-- **336 books** queried (all in `KoboSyncedBooks` for run CW)
-- **18 books** had annotations on cloud
-- **39 total annotations** retrievable
-- Top: "Fan Service" with 17, "The Risk" with 3
-- Most are presumed lost from the user's perspective — invisible on device after past redownloads/polishes/shelf-moves
+Two passes of `kobo-cloud-annotations-dump.sh` against main library on 2026-05-22 → 2026-05-23:
 
-Phase 1 backfill recovers all of this in one pass. Concrete scale of value, not a hypothetical.
+| Scope | Books queried | Books with annotations | Total annotations |
+|---|---|---|---|
+| `KoboSyncedBooks` only (currently-synced) | 336 | 18 | 39 |
+| **Full Calibre library** (`--all-library` flag) | **4,151** | **30** | **59** |
+
+The full-library pass surfaced **+12 books / +20 annotations** that weren't visible via the synced-books filter — those are books either previously on the initial (failed) Kobo, or removed from the current device, or never re-synced after some past event. All of them retain cloud-side annotations under the user's account + book UUID.
+
+**Implication for Phase 1 backfill scope:** iterate the full Calibre library, not just `KoboSyncedBooks`. The retention is genuinely book-scope (per `(kobo_user_id, content_uuid)`), not device-scope. The script supports this via `--all-library`. Tradeoff: ~50s vs ~10min runtime against main library, but the comprehensive set is what you want for backfill — historical annotations from prior devices and de-synced books are all recoverable.
+
+**UUID model clarification (relevant to the cross-library/cross-device finding):**
+- `book.id` (Calibre integer): auto-increments per library; meaningless across libraries
+- `book.uuid` (Calibre GUID): generated at first add to a library; stable for that book within that library
+- Adding the "same" EPUB to two different libraries usually produces two different UUIDs (Calibre doesn't always preserve the OPF-embedded UUID across libraries — confirmed empirically for Fae Queen: `0760c08f` in main, `9c798050` in lab)
+- Kobo cloud keys annotations by `(kobo_user_id, content_uuid)` — so all Kobos on one account *synced through the same library* share an annotation namespace, but the same book in two libraries does not cross-pollinate
+- Device replacement transparently inherits: kobo_user_id is account-scoped, the UUID comes from CW serving the same library, so initial-Kobo annotations are accessible to the replacement Kobo without manual migration
 
 ### Web-origin annotation propagation (read.kobo.com → device)
 
@@ -315,6 +330,22 @@ Discovered 2026-05-23 by writing on a Kobo-store book ("Set the Night on Fire") 
 - **Attachments are a new concern**: capturing markup means either downloading + storing JPG/SVG blobs (real blob storage in CW) or storing only the metadata and treating markup as opaque references.
 - **Phase 1 recommendation**: capture markup as opaque rows. Surface in foliate as a placeholder ("✍️ handwritten note here — view on device"). Defer real attachment fetch + render to a much later phase. Hardcover egress doesn't apply (Hardcover's Journal is text-based).
 - **Sideloaded markup is potentially CW-only territory** if Kobo refuses these uploads. Genuinely big feature scope if we ever want to fully support stylus handwriting on sideloaded books — would need CW to receive uploads, store blobs, render in foliate. Most ambitious feature in the whole project; not Phase 1.
+
+### Retention + endpoint uncertainty
+
+Two important honesty caveats on the "cloud is durable" finding:
+
+**On retention:**
+- Oldest annotations we've successfully retrieved are from **2025-05-02** — about 12 months back as of investigation.
+- That's only an observed lower bound. Kobo doesn't publish a retention policy. We have no data on what happens after 2+ years, or what triggers cleanup (account inactivity? specific data-cleanup events? terms-of-service changes?).
+- For the user's specific case, ~1 year covers the full Kobo-ownership history, so backfill recovers basically everything that ever existed. For other potential users or longer time horizons, the uncertainty grows.
+- **Implication**: Phase 1 backfill is time-sensitive. Each month of delay risks more annotations aging out under whatever real retention policy applies.
+
+**On endpoint stability:**
+- We've verified the per-UUID `GET /api/v3/content/<uuid>/annotations` endpoint extensively. CW should depend on that as the stable interface.
+- Probed candidate "list-all" endpoints (2026-05-23): `/api/v3/annotations`, `/api/v3/content/annotations`, `/api/v3/user/annotations`, `/api/v3/notebooks`, etc. — all returned 404. No simple bulk-enumeration endpoint exists at the obvious paths.
+- One real-but-unparsed endpoint found: `storeapi.kobo.com/api/internal/notebooks` returns 400 "ArgumentOutOfRangeException", suggesting it's a real route with parameters we haven't matched. The `user.NotebookSyncToken` column in `KoboReader.sqlite` hints at a notebook-sync mechanism that might use it. Worth deeper probing in a future session (cross-reference NextGen's work; possibly inspect Kobo desktop app via Charles Proxy).
+- Either way: **Kobo could deprecate any endpoint at any time without notice.** CW's design should treat per-UUID GET as the load-bearing interface and any bulk endpoint as an opportunistic optimization. Per-UUID enumeration of 336 books takes ~50s total — acceptable for backfill.
 
 ### Bulk-fetch + token-refresh caveat
 

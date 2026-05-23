@@ -16,11 +16,16 @@
 #                    kobo-cloud-annotations-dump.sh @~/.calibre-web/lab/calibre-web.log
 #
 # Options:
-#   --library  PATH  Calibre library (default: /Volumes/Satechi/macMini/calibre-wt)
-#   --app-db   PATH  CW app.db (default: matches --library; lab or run)
-#   --outdir   DIR   Output dir (default: /tmp/kobo-cloud-dump)
-#   --deviceid HEX   Override X-Kobo-Deviceid (default: lab Kobo's id)
-#   --limit    N     Stop after N books (debugging; default: all)
+#   --library      PATH  Calibre library (default: /Volumes/Satechi/macMini/calibre-wt)
+#   --app-db       PATH  CW app.db (default: matches --library; lab or run)
+#   --outdir       DIR   Output dir (default: /tmp/kobo-cloud-dump)
+#   --deviceid     HEX   Override X-Kobo-Deviceid (default: lab Kobo's id)
+#   --limit        N     Stop after N books (debugging; default: all)
+#   --all-library        Query every UUID in the Calibre library, not just books
+#                        currently in KoboSyncedBooks. Catches annotations from
+#                        prior devices or books no longer on the current device.
+#                        Slower (main library = ~10min for 4000+ books) but
+#                        comprehensive. --app-db is ignored in this mode.
 #
 # Output layout:
 #   <outdir>/summary.tsv              tab-separated: uuid, title, annot_count, status
@@ -37,21 +42,23 @@ OUTDIR="/tmp/kobo-cloud-dump"
 DEVICE_ID="a82292c710a3f2cfaf2f502898bbf42f341d1016dca5fb6e0bbe1e5584c0a9fd"
 LIMIT=""
 TOKEN_ARG=""
+ALL_LIBRARY=0
 
-usage() { sed -n '4,28p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '4,32p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 
 # --- args -------------------------------------------------------------------
 [[ $# -lt 1 ]] && usage
 TOKEN_ARG="$1"; shift
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --library)  LIBRARY="$2"; shift 2 ;;
-    --app-db)   APP_DB="$2";  shift 2 ;;
-    --outdir)   OUTDIR="$2";  shift 2 ;;
-    --deviceid) DEVICE_ID="$2"; shift 2 ;;
-    --limit)    LIMIT="$2";   shift 2 ;;
-    --help|-h)  usage ;;
-    *)          echo "unknown arg: $1" >&2; exit 1 ;;
+    --library)     LIBRARY="$2"; shift 2 ;;
+    --app-db)      APP_DB="$2";  shift 2 ;;
+    --outdir)      OUTDIR="$2";  shift 2 ;;
+    --deviceid)    DEVICE_ID="$2"; shift 2 ;;
+    --limit)       LIMIT="$2";   shift 2 ;;
+    --all-library) ALL_LIBRARY=1; shift ;;
+    --help|-h)     usage ;;
+    *)             echo "unknown arg: $1" >&2; exit 1 ;;
   esac
 done
 
@@ -96,24 +103,31 @@ mkdir -p "$OUTDIR/by-uuid"
 printf 'uuid\ttitle\tannot_count\tstatus\n' > "$OUTDIR/summary.tsv"
 
 # --- build book list --------------------------------------------------------
-# Join KoboSyncedBooks (CW app.db, "main" attached) with Calibre books (library
-# metadata.db, "cal" attached) — single sqlite session to do the cross-DB join.
-BOOKS_TSV=$(sqlite3 "$APP_DB" <<SQL
+if [[ "$ALL_LIBRARY" == "1" ]]; then
+  # Every UUID in the Calibre library, regardless of sync state.
+  BOOKS_TSV=$(sqlite3 "$LIBRARY/metadata.db" \
+    "SELECT uuid, title FROM books ORDER BY title")
+  SOURCE_DESC="Calibre library (all books)"
+else
+  # Join KoboSyncedBooks (CW app.db) with Calibre books (library metadata.db).
+  BOOKS_TSV=$(sqlite3 "$APP_DB" <<SQL
 ATTACH DATABASE '$LIBRARY/metadata.db' AS cal;
 SELECT cal.books.uuid, cal.books.title
 FROM main.kobo_synced_books AS ksb
 JOIN cal.books ON cal.books.id = ksb.book_id
 ORDER BY cal.books.title;
 SQL
-)
+  )
+  SOURCE_DESC="KoboSyncedBooks"
+fi
 
 if [[ -z "$BOOKS_TSV" ]]; then
-  echo "no books found in KoboSyncedBooks joined with $LIBRARY" >&2
+  echo "no books found in $SOURCE_DESC" >&2
   exit 1
 fi
 
 TOTAL=$(printf '%s\n' "$BOOKS_TSV" | wc -l | tr -d ' ')
-echo "found $TOTAL books in KoboSyncedBooks; querying Kobo cloud..."
+echo "found $TOTAL books in $SOURCE_DESC; querying Kobo cloud..."
 echo
 
 # --- per-book curl ----------------------------------------------------------
